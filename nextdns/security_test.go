@@ -183,3 +183,111 @@ func TestSecurityJSONFieldNames(t *testing.T) {
 	_, ok = result["tlds"]
 	c.True(ok)
 }
+
+func TestSecurityTldsList(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, http.MethodGet)
+		c.Equal(r.URL.Path, "/profiles/abc123/security/tlds")
+
+		w.WriteHeader(http.StatusOK)
+		out := `{
+			"data": [
+				{"id": ".xyz"},
+				{"id": ".top"},
+				{"id": ".work"},
+				{"id": ".click"},
+				{"id": ".link"}
+			]
+		}`
+		_, err := w.Write([]byte(out))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	tlds, err := client.SecurityTlds.List(ctx, &ListSecurityTldsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+
+	c.Equal(len(tlds), 5)
+	c.Equal(tlds[0].ID, ".xyz")
+	c.Equal(tlds[1].ID, ".top")
+	c.Equal(tlds[2].ID, ".work")
+	c.Equal(tlds[3].ID, ".click")
+	c.Equal(tlds[4].ID, ".link")
+}
+
+func TestSecurityTldsCreate(t *testing.T) {
+	c := is.New(t)
+
+	var receivedBody []interface{}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, http.MethodPut)
+		c.Equal(r.URL.Path, "/profiles/abc123/security/tlds")
+
+		body, err := io.ReadAll(r.Body)
+		c.NoErr(err)
+		err = json.Unmarshal(body, &receivedBody)
+		c.NoErr(err)
+
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write([]byte(`{"data":[]}`))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	request := &CreateSecurityTldsRequest{
+		ProfileID: "abc123",
+		SecurityTlds: []*SecurityTlds{
+			{ID: ".xyz"},
+			{ID: ".top"},
+			{ID: ".work"},
+		},
+	}
+
+	err = client.SecurityTlds.Create(ctx, request)
+	c.NoErr(err)
+
+	c.Equal(len(receivedBody), 3)
+
+	first, ok := receivedBody[0].(map[string]interface{})
+	c.True(ok)
+	c.Equal(first["id"], ".xyz")
+
+	second, ok := receivedBody[1].(map[string]interface{})
+	c.True(ok)
+	c.Equal(second["id"], ".top")
+
+	third, ok := receivedBody[2].(map[string]interface{})
+	c.True(ok)
+	c.Equal(third["id"], ".work")
+}
+
+func TestSecurityTldsEmptyList(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"data":[]}`))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	tlds, err := client.SecurityTlds.List(ctx, &ListSecurityTldsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+
+	c.Equal(len(tlds), 0)
+}
