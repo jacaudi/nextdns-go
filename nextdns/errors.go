@@ -19,6 +19,7 @@ const (
 	errMalformedErrorBody   = "malformed error response body received"
 )
 
+// Error type constants define the various types of errors that can occur.
 const (
 	ErrorTypeServiceError   ErrorType = "service_error"  // Internal service error.
 	ErrorTypeRequest        ErrorType = "request"        // Regular request error.
