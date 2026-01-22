@@ -9,6 +9,7 @@ import (
 // ErrorType defines the code of an error.
 type ErrorType string
 
+// ErrEmptyAPIToken is returned when an empty API token is provided during client initialization.
 var ErrEmptyAPIToken = errors.New("api key must not be empty")
 
 const (
