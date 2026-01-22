@@ -1,6 +1,6 @@
 module github.com/amalucelli/nextdns-go
 
-go 1.19
+go 1.23
 
 require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
