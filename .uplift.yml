@@ -1,0 +1,51 @@
+# Uplift configuration for nextdns-go
+# See: https://upliftci.dev/configuration/
+
+# Git configuration
+git:
+  # Conventional commit format
+  commitMessage: |
+    chore(release): {{.NewVersion}}
+
+    {{.ChangelogContent}}
+
+  # Tag format
+  tagPrefix: v
+
+# Version bumping (Go modules use git tags, no file bumping needed)
+bumps: []
+
+# Changelog configuration
+changelog:
+  # Sort commits by type
+  sort: type
+
+  # Include these commit types
+  include:
+    - feat
+    - fix
+    - perf
+    - refactor
+
+  # Exclude these commit types
+  exclude:
+    - chore
+    - docs
+    - test
+    - build
+    - ci
+    - style
+
+  # Group commits in changelog
+  groups:
+    - titleRegex: "^feat"
+      title: "Features"
+    - titleRegex: "^fix"
+      title: "Bug Fixes"
+    - titleRegex: "^perf"
+      title: "Performance Improvements"
+    - titleRegex: "^refactor"
+      title: "Code Refactoring"
+
+# Release behavior
+firstVersion: v0.1.0
