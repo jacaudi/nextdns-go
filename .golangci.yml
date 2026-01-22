@@ -1,4 +1,4 @@
-version: 2
+version: "2"
 
 linters:
   enable:
@@ -8,9 +8,6 @@ linters:
   - errcheck
   - unused
   - godot
-  - goerr113
-  - gofmt
-  - gofumpt
   - gosec
   - misspell
   - revive
@@ -18,13 +15,10 @@ linters:
   - unconvert
   - whitespace
   - staticcheck
-  disable:
-  - structcheck
-
-linters-settings:
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: 'github.com/pkg/errors'
-            desc: 'the github.com/pkg/errors is deprecated, use stdlib instead'
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: 'github.com/pkg/errors'
+              desc: 'the github.com/pkg/errors is deprecated, use stdlib instead'
