@@ -1,3 +1,4 @@
+// Package nextdns provides a client library for interacting with the NextDNS API.
 package nextdns
 
 import (
