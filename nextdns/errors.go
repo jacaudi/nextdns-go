@@ -52,7 +52,7 @@ type Error struct {
 func (e *Error) Error() string {
 	var out strings.Builder
 
-	if len(e.Errors.Errors) > 0 {
+	if e.Errors != nil && len(e.Errors.Errors) > 0 {
 		out.WriteString(fmt.Sprintf("%s (%s): ", e.Message, e.Type))
 		for _, er := range e.Errors.Errors {
 			if er.Detail != "" {
