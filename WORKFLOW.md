@@ -64,10 +64,10 @@ For uplift to trigger downstream workflows, you need a GitHub App:
 
 ```bash
 # Get the latest version
-go get github.com/amalucelli/nextdns-go/nextdns@latest
+go get github.com/jacaudi/nextdns-go/nextdns@latest
 
 # Get a specific version
-go get github.com/amalucelli/nextdns-go/nextdns@v1.2.3
+go get github.com/jacaudi/nextdns-go/nextdns@v1.2.3
 ```
 
 ### In your go.mod
@@ -80,7 +80,7 @@ module github.com/yourorg/yourproject
 go 1.19
 
 require (
-    github.com/amalucelli/nextdns-go v1.2.3
+    github.com/jacaudi/nextdns-go v1.2.3
 )
 ```
 
@@ -93,7 +93,7 @@ import (
     "context"
     "log"
 
-    "github.com/amalucelli/nextdns-go/nextdns"
+    "github.com/jacaudi/nextdns-go/nextdns"
 )
 
 func main() {
@@ -127,10 +127,10 @@ Go modules use **Minimal Version Selection (MVS)**:
 
 ```bash
 # Update to latest version
-go get -u github.com/amalucelli/nextdns-go/nextdns
+go get -u github.com/jacaudi/nextdns-go/nextdns
 
 # Update to specific version
-go get github.com/amalucelli/nextdns-go/nextdns@v2.0.0
+go get github.com/jacaudi/nextdns-go/nextdns@v2.0.0
 ```
 
 ## Workflow Behavior
@@ -159,9 +159,9 @@ Manual tagging is disabled in favor of automatic versioning. If needed, uncommen
 
 ## Viewing Releases
 
-- **GitHub Releases**: https://github.com/amalucelli/nextdns-go/releases
-- **pkg.go.dev**: https://pkg.go.dev/github.com/amalucelli/nextdns-go/nextdns (auto-indexed)
-- **Tags**: https://github.com/amalucelli/nextdns-go/tags
+- **GitHub Releases**: https://github.com/jacaudi/nextdns-go/releases
+- **pkg.go.dev**: https://pkg.go.dev/github.com/jacaudi/nextdns-go/nextdns (auto-indexed)
+- **Tags**: https://github.com/jacaudi/nextdns-go/tags
 
 ## Troubleshooting
 
@@ -180,7 +180,7 @@ If using `GITHUB_TOKEN` instead of GitHub App, tag creation won't trigger workfl
 ```bash
 # Clear module cache and retry
 go clean -modcache
-go get -u github.com/amalucelli/nextdns-go/nextdns@latest
+go get -u github.com/jacaudi/nextdns-go/nextdns@latest
 ```
 
 ## Development Workflow
@@ -210,5 +210,5 @@ go get -u github.com/amalucelli/nextdns-go/nextdns@latest
 
 5. **Use in downstream project**
    ```bash
-   go get -u github.com/amalucelli/nextdns-go/nextdns@latest
+   go get -u github.com/jacaudi/nextdns-go/nextdns@latest
    ```

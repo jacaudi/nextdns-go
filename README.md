@@ -5,7 +5,7 @@ Go client library for [NextDNS](https://nextdns.io/) API.
 ## Install
 
 ```bash
-go get github.com/amalucelli/nextdns-go/nextdns
+go get github.com/jacaudi/nextdns-go/nextdns
 ```
 
 ## Requirements
@@ -35,7 +35,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/amalucelli/nextdns-go/nextdns"
+	"github.com/jacaudi/nextdns-go/nextdns"
 )
 
 func main() {
@@ -141,7 +141,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/amalucelli/nextdns-go/nextdns"
+	"github.com/jacaudi/nextdns-go/nextdns"
 )
 
 func main() {

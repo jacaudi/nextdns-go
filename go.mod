@@ -1,4 +1,4 @@
-module github.com/amalucelli/nextdns-go
+module github.com/jacaudi/nextdns-go
 
 go 1.23
 
