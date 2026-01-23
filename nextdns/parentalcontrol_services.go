@@ -29,7 +29,7 @@ type UpdateParentalControlServicesRequest struct {
 	ParentalControlServices *ParentalControlServices
 }
 
-// GetParentalControlServicesRequest encapsulates the request for getting a parental control services list.
+// ListParentalControlServicesRequest encapsulates the request for getting a parental control services list.
 type ListParentalControlServicesRequest struct {
 	ProfileID string
 }
