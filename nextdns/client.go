@@ -183,13 +183,13 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	return c.handleResponse(ctx, res, v)
+	return c.handleResponse(res, v)
 }
 
 // handleResponse handles the response from the NextDNS API and decodes the response into v if provided.
 // The goal is to handle the common errors that can occur when making a request to the NextDNS API,
 // and also provide custom error responses for the client.
-func (c *Client) handleResponse(ctx context.Context, res *http.Response, v interface{}) error {
+func (c *Client) handleResponse(res *http.Response, v interface{}) error {
 	out, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
