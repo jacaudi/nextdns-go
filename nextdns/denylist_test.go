@@ -76,7 +76,7 @@ func TestDenylistGet(t *testing.T) {
 func TestDenylistUpdate(t *testing.T) {
 	c := is.New(t)
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		_, err := w.Write([]byte(""))
 		c.NoErr(err)
