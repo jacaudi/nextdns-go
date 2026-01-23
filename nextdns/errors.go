@@ -9,6 +9,7 @@ import (
 // ErrorType defines the code of an error.
 type ErrorType string
 
+// ErrEmptyAPIToken is returned when an empty API token is provided during client initialization.
 var ErrEmptyAPIToken = errors.New("api key must not be empty")
 
 const (
@@ -18,6 +19,7 @@ const (
 	errMalformedErrorBody   = "malformed error response body received"
 )
 
+// ErrorType constants classify errors returned by the NextDNS Client.
 const (
 	ErrorTypeServiceError   ErrorType = "service_error"  // Internal service error.
 	ErrorTypeRequest        ErrorType = "request"        // Regular request error.
@@ -50,7 +52,7 @@ type Error struct {
 func (e *Error) Error() string {
 	var out strings.Builder
 
-	if e.Errors.Errors != nil && len(e.Errors.Errors) > 0 {
+	if e.Errors != nil && len(e.Errors.Errors) > 0 {
 		out.WriteString(fmt.Sprintf("%s (%s): ", e.Message, e.Type))
 		for _, er := range e.Errors.Errors {
 			if er.Detail != "" {
