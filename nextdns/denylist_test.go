@@ -43,7 +43,7 @@ func TestDenylistCreate(t *testing.T) {
 func TestDenylistGet(t *testing.T) {
 	c := is.New(t)
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		out := `{"data":[{"id":"whatsapp.net","active":true},{"id":"apple.com","active":false}]}`
 		_, err := w.Write([]byte(out))
