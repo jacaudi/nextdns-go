@@ -9,6 +9,7 @@ import (
 // setupLinkedIPAPIPath is the HTTP path for the setup linked IP API.
 const setupLinkedIPAPIPath = "setup/linkedip"
 
+// SetupLinkedIP represents the linked IP configuration settings for a NextDNS profile.
 type SetupLinkedIP struct {
 	Servers     []string `json:"servers"`
 	IP          string   `json:"ip"`
