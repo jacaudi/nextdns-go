@@ -4,7 +4,7 @@ This document explains the automated release workflow and how to use this packag
 
 ## How the Workflow Works
 
-### Automatic Versioning with Uplift
+### Automatic Versioning with Semantic Release
 
 The workflow uses **Conventional Commits** to automatically create version tags:
 
@@ -13,11 +13,11 @@ Push to main with conventional commits
     ↓
 Lint & Test jobs run
     ↓
-Uplift analyzes commits since last version
+Semantic Release analyzes commits since last version
     ↓
 Creates version tag based on commit types
     ↓
-GoReleaser creates GitHub release
+GoReleaser creates GitHub release (via hooks)
     ↓
 pkg.go.dev indexes new version automatically
 ```
@@ -31,7 +31,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/) format:
 | `fix: ...` | Patch (v1.0.1) | `fix: handle nil pointer in profile update` |
 | `feat: ...` | Minor (v1.1.0) | `feat: add analytics endpoint support` |
 | `feat!: ...` or `BREAKING CHANGE:` | Major (v2.0.0) | `feat!: change client initialization API` |
-| `chore:`, `docs:`, `test:` | No version | Ignored by uplift |
+| `chore:`, `docs:`, `test:` | No version | Ignored by semantic-release |
 
 **Examples:**
 ```bash
@@ -49,9 +49,9 @@ BREAKING CHANGE: NewClient now requires context parameter"
 
 ### Required GitHub Secrets
 
-For uplift to trigger downstream workflows, you need a GitHub App:
+For semantic-release to trigger downstream workflows, you need a GitHub App:
 
-1. Create a GitHub App with `contents: write` permission
+1. Create a GitHub App with `contents: write`, `issues: write`, and `pull-requests: write` permissions
 2. Add these secrets to your repository:
    - `APP_ID` - GitHub App ID
    - `APP_PRIVATE_KEY` - GitHub App private key (PEM format)
@@ -167,7 +167,7 @@ Manual tagging is disabled in favor of automatic versioning. If needed, uncommen
 
 ### "No new version created"
 
-Uplift didn't find any releasable commits (feat/fix). Check:
+Semantic Release didn't find any releasable commits (feat/fix). Check:
 - Are you using conventional commit format?
 - Have you already released these commits?
 
@@ -204,7 +204,7 @@ go get -u github.com/jacaudi/nextdns-go/nextdns@latest
 
 4. **Merge to main** (after review)
    - Lint and test run automatically
-   - Uplift analyzes commits and creates version tag
+   - Semantic Release analyzes commits and creates version tag
    - GoReleaser publishes release
    - pkg.go.dev indexes new version (~10 minutes)
 

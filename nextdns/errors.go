@@ -48,7 +48,7 @@ type Error struct {
 }
 
 // Error returns the string representation of the error.
-// TODO(amalucelli): This is still not the best way to handle multiple errors, make this better at some point.
+// TODO(jacaudi): Improve error handling for multiple errors. See https://github.com/jacaudi/nextdns-go/issues/7
 func (e *Error) Error() string {
 	var out strings.Builder
 

@@ -215,7 +215,7 @@ func (c *Client) handleResponse(res *http.Response, v interface{}) error {
 	}
 
 	// If the response is not a 200, then we need to handle the error.
-	// TODO(amalucelli): Report the behavior to NextDNS, but there are errors that return HTTP 200 ("duplicate" case).
+	// TODO(jacaudi): Report the behavior to NextDNS, but there are errors that return HTTP 200 ("duplicate" case). See https://github.com/jacaudi/nextdns-go/issues/8
 	if res.StatusCode >= http.StatusBadRequest || strings.Contains(string(out), "\"errors\"") {
 		if res.StatusCode >= http.StatusInternalServerError {
 			return &Error{
