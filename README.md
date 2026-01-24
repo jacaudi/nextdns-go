@@ -177,3 +177,7 @@ func main() {
 	}
 }
 ```
+
+## Credits
+
+This project is based on the original work by Alexandre Malucelli at [amalucelli/nextdns-go](https://github.com/amalucelli/nextdns-go). The repository was forked and is now maintained independently with ongoing development and enhancements.
