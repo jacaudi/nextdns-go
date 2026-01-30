@@ -81,18 +81,23 @@ func (e *APIError) Is(target error) bool {
 // TODO(jacaudi): Improve error handling for multiple errors. See https://github.com/jacaudi/nextdns-go/issues/7
 func (e *Error) Error() string {
 	var out strings.Builder
+	out.WriteString(fmt.Sprintf("%s (%s)", e.Message, e.Type))
 
 	if e.Errors != nil && len(e.Errors.Errors) > 0 {
-		out.WriteString(fmt.Sprintf("%s (%s): ", e.Message, e.Type))
-		for _, er := range e.Errors.Errors {
+		out.WriteString(": ")
+		for i, er := range e.Errors.Errors {
+			if i > 0 {
+				out.WriteString("; ")
+			}
 			if er.Detail != "" {
-				out.WriteString(fmt.Sprintf("%s (%s)", er.Detail, er.Code))
+				out.WriteString(fmt.Sprintf("%s [%s]", er.Detail, er.Code))
 			} else {
 				out.WriteString(er.Code)
 			}
+			if er.Source.Parameter != "" {
+				out.WriteString(fmt.Sprintf(" (parameter: %s)", er.Source.Parameter))
+			}
 		}
-	} else {
-		out.WriteString(e.Message)
 	}
 
 	return out.String()
