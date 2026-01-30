@@ -47,6 +47,18 @@ type Error struct {
 	Meta    map[string]string
 }
 
+// APIError represents a single error from the NextDNS API.
+type APIError struct {
+	Code      string
+	Detail    string
+	Parameter string
+}
+
+// Error returns the string representation of the API error.
+func (e *APIError) Error() string {
+	return e.Code
+}
+
 // Error returns the string representation of the error.
 // TODO(jacaudi): Improve error handling for multiple errors. See https://github.com/jacaudi/nextdns-go/issues/7
 func (e *Error) Error() string {
