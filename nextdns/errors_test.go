@@ -1,6 +1,7 @@
 package nextdns
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/matryer/is"
@@ -46,4 +47,22 @@ func TestAPIError_Error_WithDetailAndParameter(t *testing.T) {
 	}
 
 	c.Equal(err.Error(), "Invalid value provided [invalid] (parameter: domain)")
+}
+
+func TestAPIError_Is(t *testing.T) {
+	c := is.New(t)
+
+	err := &APIError{Code: "duplicate", Detail: "Entry already exists"}
+	target := &APIError{Code: "duplicate"}
+
+	c.True(errors.Is(err, target))
+}
+
+func TestAPIError_Is_NoMatch(t *testing.T) {
+	c := is.New(t)
+
+	err := &APIError{Code: "duplicate"}
+	target := &APIError{Code: "invalidDomain"}
+
+	c.True(!errors.Is(err, target))
 }

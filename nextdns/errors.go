@@ -68,6 +68,15 @@ func (e *APIError) Error() string {
 	return e.Code
 }
 
+// Is reports whether the error matches the target by comparing error codes.
+func (e *APIError) Is(target error) bool {
+	t, ok := target.(*APIError)
+	if !ok {
+		return false
+	}
+	return e.Code == t.Code
+}
+
 // Error returns the string representation of the error.
 // TODO(jacaudi): Improve error handling for multiple errors. See https://github.com/jacaudi/nextdns-go/issues/7
 func (e *Error) Error() string {
