@@ -56,6 +56,15 @@ type APIError struct {
 
 // Error returns the string representation of the API error.
 func (e *APIError) Error() string {
+	if e.Detail != "" {
+		if e.Parameter != "" {
+			return fmt.Sprintf("%s [%s] (parameter: %s)", e.Detail, e.Code, e.Parameter)
+		}
+		return fmt.Sprintf("%s [%s]", e.Detail, e.Code)
+	}
+	if e.Parameter != "" {
+		return fmt.Sprintf("%s (parameter: %s)", e.Code, e.Parameter)
+	}
 	return e.Code
 }
 
