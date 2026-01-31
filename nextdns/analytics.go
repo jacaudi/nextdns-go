@@ -315,14 +315,47 @@ func (s *analyticsService) GetDomainsSeries(ctx context.Context, request *GetAna
 
 // GetDevices returns connected devices and query distribution.
 func (s *analyticsService) GetDevices(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
-	// TODO: Implement in Task 8
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "devices")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics devices: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics devices: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
 }
 
 // GetDevicesSeries returns connected devices and query distribution as time series.
 func (s *analyticsService) GetDevicesSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
-	// TODO: Implement in Task 8
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "devices;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics devices series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics devices series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
 }
 
 // GetDestinations returns queries by country or GAFAM company.

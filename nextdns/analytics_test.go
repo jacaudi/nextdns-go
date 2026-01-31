@@ -239,3 +239,66 @@ func TestAnalyticsGetDomainsSeries(t *testing.T) {
 	c.NoErr(err)
 	c.Equal(len(resp.Data), 1)
 }
+
+func TestAnalyticsGetDevices(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/devices")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "device-1", "name": "iPhone", "queries": 500},
+				{"id": "device-2", "name": "MacBook", "queries": 300}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	resp, err := client.Analytics.GetDevices(ctx, &GetAnalyticsRequest{
+		ProfileID: "abc123",
+	})
+
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].Name, "iPhone")
+}
+
+func TestAnalyticsGetDevicesSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/devices;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "device-1", "name": "iPhone", "queries": [100, 200]}],
+			"meta": {
+				"pagination": {"cursor": ""},
+				"series": {"times": ["2024-01-01T00:00:00Z"], "interval": 3600}
+			}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	resp, err := client.Analytics.GetDevicesSeries(ctx, &GetAnalyticsTimeSeriesRequest{
+		ProfileID: "abc123",
+	})
+
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+}
