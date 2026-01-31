@@ -78,7 +78,6 @@ func (e *APIError) Is(target error) bool {
 }
 
 // Error returns the string representation of the error.
-// TODO(jacaudi): Improve error handling for multiple errors. See https://github.com/jacaudi/nextdns-go/issues/7
 func (e *Error) Error() string {
 	var out strings.Builder
 	out.WriteString(fmt.Sprintf("%s (%s)", e.Message, e.Type))
