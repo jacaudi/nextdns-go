@@ -120,3 +120,39 @@ func (e *Error) Unwrap() []error {
 	}
 	return errs
 }
+
+// IsNotFound returns true if the error is a not found error.
+func IsNotFound(err error) bool {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Type == ErrorTypeNotFound
+	}
+	return false
+}
+
+// IsAuthError returns true if the error is an authentication error.
+func IsAuthError(err error) bool {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Type == ErrorTypeAuthentication
+	}
+	return false
+}
+
+// IsDuplicateError returns true if the error contains a duplicate error code.
+func IsDuplicateError(err error) bool {
+	return HasErrorCode(err, "duplicate")
+}
+
+// HasErrorCode returns true if the error contains the specified error code.
+func HasErrorCode(err error, code string) bool {
+	var e *Error
+	if errors.As(err, &e) && e.Errors != nil {
+		for _, apiErr := range e.Errors.Errors {
+			if apiErr.Code == code {
+				return true
+			}
+		}
+	}
+	return false
+}

@@ -214,3 +214,88 @@ func TestError_Unwrap_ErrorsAs(t *testing.T) {
 	c.True(errors.As(err, &apiErr))
 	c.Equal(apiErr.Code, "duplicate")
 }
+
+func TestIsNotFound(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{Type: ErrorTypeNotFound, Message: "not found"}
+	c.True(IsNotFound(err))
+
+	err2 := &Error{Type: ErrorTypeRequest, Message: "request error"}
+	c.True(!IsNotFound(err2))
+
+	c.True(!IsNotFound(errors.New("random error")))
+}
+
+func TestIsAuthError(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{Type: ErrorTypeAuthentication, Message: "forbidden"}
+	c.True(IsAuthError(err))
+
+	err2 := &Error{Type: ErrorTypeRequest, Message: "request error"}
+	c.True(!IsAuthError(err2))
+}
+
+func TestIsDuplicateError(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{
+		Type:    ErrorTypeRequest,
+		Message: "response error received",
+		Errors: &ErrorResponse{
+			Errors: []struct {
+				Code   string `json:"code"`
+				Detail string `json:"detail,omitempty"`
+				Source struct {
+					Parameter string `json:"parameter,omitempty"`
+				} `json:"source,omitempty"`
+			}{
+				{Code: "duplicate"},
+			},
+		},
+	}
+	c.True(IsDuplicateError(err))
+
+	err2 := &Error{
+		Type:    ErrorTypeRequest,
+		Message: "response error received",
+		Errors: &ErrorResponse{
+			Errors: []struct {
+				Code   string `json:"code"`
+				Detail string `json:"detail,omitempty"`
+				Source struct {
+					Parameter string `json:"parameter,omitempty"`
+				} `json:"source,omitempty"`
+			}{
+				{Code: "invalidDomain"},
+			},
+		},
+	}
+	c.True(!IsDuplicateError(err2))
+}
+
+func TestHasErrorCode(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{
+		Type:    ErrorTypeRequest,
+		Message: "response error received",
+		Errors: &ErrorResponse{
+			Errors: []struct {
+				Code   string `json:"code"`
+				Detail string `json:"detail,omitempty"`
+				Source struct {
+					Parameter string `json:"parameter,omitempty"`
+				} `json:"source,omitempty"`
+			}{
+				{Code: "invalidDomain"},
+				{Code: "duplicate"},
+			},
+		},
+	}
+
+	c.True(HasErrorCode(err, "invalidDomain"))
+	c.True(HasErrorCode(err, "duplicate"))
+	c.True(!HasErrorCode(err, "notFound"))
+}
