@@ -60,6 +60,9 @@ type Client struct {
 	Setup         SetupService
 	SetupLinkedIP SetupLinkedIPService
 
+	// Services for Analytics.
+	Analytics AnalyticsService
+
 	// Debug mode for the HTTP requests.
 	Debug bool
 }
@@ -169,6 +172,9 @@ func New(opts ...ClientOption) (*Client, error) {
 	// Initialize the services for the Setup.
 	c.Setup = NewSetupService(c)
 	c.SetupLinkedIP = NewSetupLinkedIPService(c)
+
+	// Initialize the services for Analytics.
+	c.Analytics = NewAnalyticsService(c)
 
 	return c, nil
 }

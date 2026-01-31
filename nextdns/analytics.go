@@ -1,5 +1,7 @@
 package nextdns
 
+import "context"
+
 const analyticsAPIPath = "analytics"
 
 // AnalyticsOptions contains common parameters for all analytics endpoints.
@@ -119,4 +121,85 @@ type GetAnalyticsDestinationsTimeSeriesRequest struct {
 	ProfileID string
 	Options   *AnalyticsTimeSeriesOptions
 	Type      string
+}
+
+// AnalyticsService provides access to NextDNS analytics data.
+type AnalyticsService interface {
+	// Status returns query counts by resolution status (default, blocked, allowed).
+	GetStatus(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetStatusSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// Domains returns top queried domains.
+	GetDomains(ctx context.Context, request *GetAnalyticsDomainsRequest) (*AnalyticsResponse, error)
+	GetDomainsSeries(ctx context.Context, request *GetAnalyticsDomainsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// Devices returns connected devices and query distribution.
+	GetDevices(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetDevicesSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// Destinations returns queries by country or GAFAM company.
+	GetDestinations(ctx context.Context, request *GetAnalyticsDestinationsRequest) (*AnalyticsResponse, error)
+	GetDestinationsSeries(ctx context.Context, request *GetAnalyticsDestinationsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+}
+
+type analyticsService struct {
+	client *Client
+}
+
+// Compile-time check that analyticsService implements AnalyticsService.
+var _ AnalyticsService = &analyticsService{}
+
+// NewAnalyticsService creates a new analytics service.
+func NewAnalyticsService(client *Client) *analyticsService {
+	return &analyticsService{
+		client: client,
+	}
+}
+
+// GetStatus returns query counts by resolution status.
+func (s *analyticsService) GetStatus(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	// TODO: Implement in Task 5
+	return nil, nil
+}
+
+// GetStatusSeries returns query counts by resolution status as time series.
+func (s *analyticsService) GetStatusSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	// TODO: Implement in Task 6
+	return nil, nil
+}
+
+// GetDomains returns top queried domains.
+func (s *analyticsService) GetDomains(ctx context.Context, request *GetAnalyticsDomainsRequest) (*AnalyticsResponse, error) {
+	// TODO: Implement in Task 7
+	return nil, nil
+}
+
+// GetDomainsSeries returns top queried domains as time series.
+func (s *analyticsService) GetDomainsSeries(ctx context.Context, request *GetAnalyticsDomainsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	// TODO: Implement in Task 7
+	return nil, nil
+}
+
+// GetDevices returns connected devices and query distribution.
+func (s *analyticsService) GetDevices(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	// TODO: Implement in Task 8
+	return nil, nil
+}
+
+// GetDevicesSeries returns connected devices and query distribution as time series.
+func (s *analyticsService) GetDevicesSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	// TODO: Implement in Task 8
+	return nil, nil
+}
+
+// GetDestinations returns queries by country or GAFAM company.
+func (s *analyticsService) GetDestinations(ctx context.Context, request *GetAnalyticsDestinationsRequest) (*AnalyticsResponse, error) {
+	// TODO: Implement in Task 9
+	return nil, nil
+}
+
+// GetDestinationsSeries returns queries by country or GAFAM company as time series.
+func (s *analyticsService) GetDestinationsSeries(ctx context.Context, request *GetAnalyticsDestinationsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	// TODO: Implement in Task 9
+	return nil, nil
 }
