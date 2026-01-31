@@ -360,12 +360,51 @@ func (s *analyticsService) GetDevicesSeries(ctx context.Context, request *GetAna
 
 // GetDestinations returns queries by country or GAFAM company.
 func (s *analyticsService) GetDestinations(ctx context.Context, request *GetAnalyticsDestinationsRequest) (*AnalyticsResponse, error) {
-	// TODO: Implement in Task 9
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "destinations")
+	query := buildAnalyticsQuery(request.Options)
+	if request.Type != "" {
+		query.Set("type", request.Type)
+	}
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics destinations: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics destinations: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
 }
 
 // GetDestinationsSeries returns queries by country or GAFAM company as time series.
 func (s *analyticsService) GetDestinationsSeries(ctx context.Context, request *GetAnalyticsDestinationsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
-	// TODO: Implement in Task 9
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "destinations;series")
+	query := buildTimeSeriesQuery(request.Options)
+	if request.Type != "" {
+		query.Set("type", request.Type)
+	}
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics destinations series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics destinations series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
 }
