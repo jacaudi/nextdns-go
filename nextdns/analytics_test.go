@@ -127,3 +127,48 @@ func TestAnalyticsGetStatusWithOptions(t *testing.T) {
 
 	c.NoErr(err)
 }
+
+func TestAnalyticsGetStatusSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "GET")
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/status;series")
+		c.Equal(r.URL.Query().Get("interval"), "1h")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "default", "queries": [100, 150, 200]},
+				{"id": "blocked", "queries": [10, 15, 20]}
+			],
+			"meta": {
+				"pagination": {"cursor": ""},
+				"series": {
+					"times": ["2024-01-01T00:00:00Z", "2024-01-01T01:00:00Z", "2024-01-01T02:00:00Z"],
+					"interval": 3600
+				}
+			}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	resp, err := client.Analytics.GetStatusSeries(ctx, &GetAnalyticsTimeSeriesRequest{
+		ProfileID: "abc123",
+		Options: &AnalyticsTimeSeriesOptions{
+			Interval: "1h",
+		},
+	})
+
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].ID, "default")
+	c.Equal(len(resp.Data[0].Queries), 3)
+	c.Equal(resp.Series.Interval, 3600)
+}

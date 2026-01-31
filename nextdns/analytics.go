@@ -186,6 +186,27 @@ func buildAnalyticsQuery(opts *AnalyticsOptions) url.Values {
 	return query
 }
 
+// buildTimeSeriesQuery adds time series parameters to the query.
+func buildTimeSeriesQuery(opts *AnalyticsTimeSeriesOptions) url.Values {
+	if opts == nil {
+		return url.Values{}
+	}
+	query := buildAnalyticsQuery(&opts.AnalyticsOptions)
+	if opts.Interval != "" {
+		query.Set("interval", opts.Interval)
+	}
+	if opts.Alignment != "" {
+		query.Set("alignment", opts.Alignment)
+	}
+	if opts.Timezone != "" {
+		query.Set("timezone", opts.Timezone)
+	}
+	if opts.Partials != "" {
+		query.Set("partials", opts.Partials)
+	}
+	return query
+}
+
 func analyticsPath(profileID, endpoint string) string {
 	return fmt.Sprintf("%s/%s/%s/%s", profilesAPIPath, profileID, analyticsAPIPath, endpoint)
 }
@@ -214,8 +235,25 @@ func (s *analyticsService) GetStatus(ctx context.Context, request *GetAnalyticsR
 
 // GetStatusSeries returns query counts by resolution status as time series.
 func (s *analyticsService) GetStatusSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
-	// TODO: Implement in Task 6
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "status;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics status series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics status series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
 }
 
 // GetDomains returns top queried domains.
