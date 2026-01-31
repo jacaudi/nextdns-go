@@ -258,14 +258,59 @@ func (s *analyticsService) GetStatusSeries(ctx context.Context, request *GetAnal
 
 // GetDomains returns top queried domains.
 func (s *analyticsService) GetDomains(ctx context.Context, request *GetAnalyticsDomainsRequest) (*AnalyticsResponse, error) {
-	// TODO: Implement in Task 7
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "domains")
+	query := buildAnalyticsQuery(request.Options)
+	if request.Status != "" {
+		query.Set("status", request.Status)
+	}
+	if request.Root {
+		query.Set("root", "true")
+	}
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics domains: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics domains: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
 }
 
 // GetDomainsSeries returns top queried domains as time series.
 func (s *analyticsService) GetDomainsSeries(ctx context.Context, request *GetAnalyticsDomainsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
-	// TODO: Implement in Task 7
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "domains;series")
+	query := buildTimeSeriesQuery(request.Options)
+	if request.Status != "" {
+		query.Set("status", request.Status)
+	}
+	if request.Root {
+		query.Set("root", "true")
+	}
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics domains series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics domains series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
 }
 
 // GetDevices returns connected devices and query distribution.

@@ -172,3 +172,70 @@ func TestAnalyticsGetStatusSeries(t *testing.T) {
 	c.Equal(len(resp.Data[0].Queries), 3)
 	c.Equal(resp.Series.Interval, 3600)
 }
+
+func TestAnalyticsGetDomains(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/domains")
+		c.Equal(r.URL.Query().Get("status"), "blocked")
+		c.Equal(r.URL.Query().Get("root"), "true")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "example.com", "queries": 500},
+				{"id": "test.com", "queries": 300}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	resp, err := client.Analytics.GetDomains(ctx, &GetAnalyticsDomainsRequest{
+		ProfileID: "abc123",
+		Status:    "blocked",
+		Root:      true,
+	})
+
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].ID, "example.com")
+}
+
+func TestAnalyticsGetDomainsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/domains;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "example.com", "queries": [10, 20, 30]}],
+			"meta": {
+				"pagination": {"cursor": ""},
+				"series": {"times": ["2024-01-01T00:00:00Z"], "interval": 3600}
+			}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	resp, err := client.Analytics.GetDomainsSeries(ctx, &GetAnalyticsDomainsTimeSeriesRequest{
+		ProfileID: "abc123",
+	})
+
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+}
