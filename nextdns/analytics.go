@@ -1,6 +1,12 @@
 package nextdns
 
-import "context"
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+)
 
 const analyticsAPIPath = "analytics"
 
@@ -156,10 +162,54 @@ func NewAnalyticsService(client *Client) *analyticsService {
 	}
 }
 
+// buildAnalyticsQuery converts AnalyticsOptions to url.Values.
+func buildAnalyticsQuery(opts *AnalyticsOptions) url.Values {
+	query := url.Values{}
+	if opts == nil {
+		return query
+	}
+	if opts.From != "" {
+		query.Set("from", opts.From)
+	}
+	if opts.To != "" {
+		query.Set("to", opts.To)
+	}
+	if opts.Limit > 0 {
+		query.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	if opts.Cursor != "" {
+		query.Set("cursor", opts.Cursor)
+	}
+	if opts.Device != "" {
+		query.Set("device", opts.Device)
+	}
+	return query
+}
+
+func analyticsPath(profileID, endpoint string) string {
+	return fmt.Sprintf("%s/%s/%s/%s", profilesAPIPath, profileID, analyticsAPIPath, endpoint)
+}
+
 // GetStatus returns query counts by resolution status.
 func (s *analyticsService) GetStatus(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
-	// TODO: Implement in Task 5
-	return nil, nil
+	path := analyticsPath(request.ProfileID, "status")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics status: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics status: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
 }
 
 // GetStatusSeries returns query counts by resolution status as time series.

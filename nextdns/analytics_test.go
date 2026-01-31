@@ -1,7 +1,10 @@
 package nextdns
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/matryer/is"
@@ -57,4 +60,70 @@ func TestAnalyticsTimeSeriesResponseUnmarshal(t *testing.T) {
 	c.Equal(resp.Data[0].Queries[0], 100)
 	c.Equal(resp.Meta.Series.Interval, 3600)
 	c.Equal(len(resp.Meta.Series.Times), 3)
+}
+
+func TestAnalyticsGetStatus(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "GET")
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/status")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "default", "queries": 1000},
+				{"id": "blocked", "queries": 50},
+				{"id": "allowed", "queries": 25}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	resp, err := client.Analytics.GetStatus(ctx, &GetAnalyticsRequest{
+		ProfileID: "abc123",
+	})
+
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 3)
+	c.Equal(resp.Data[0].ID, "default")
+	c.Equal(resp.Data[0].Queries, 1000)
+}
+
+func TestAnalyticsGetStatusWithOptions(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "GET")
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/status")
+		c.Equal(r.URL.Query().Get("from"), "-7d")
+		c.Equal(r.URL.Query().Get("limit"), "100")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": [], "meta": {"pagination": {"cursor": ""}}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	_, err = client.Analytics.GetStatus(ctx, &GetAnalyticsRequest{
+		ProfileID: "abc123",
+		Options: &AnalyticsOptions{
+			From:  "-7d",
+			Limit: 100,
+		},
+	})
+
+	c.NoErr(err)
 }
