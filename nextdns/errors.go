@@ -102,3 +102,21 @@ func (e *Error) Error() string {
 
 	return out.String()
 }
+
+// Unwrap returns the underlying API errors for use with errors.Is and errors.As.
+// Returns nil if there are no underlying API errors.
+func (e *Error) Unwrap() []error {
+	if e.Errors == nil || len(e.Errors.Errors) == 0 {
+		return nil
+	}
+
+	errs := make([]error, len(e.Errors.Errors))
+	for i, apiErr := range e.Errors.Errors {
+		errs[i] = &APIError{
+			Code:      apiErr.Code,
+			Detail:    apiErr.Detail,
+			Parameter: apiErr.Source.Parameter,
+		}
+	}
+	return errs
+}

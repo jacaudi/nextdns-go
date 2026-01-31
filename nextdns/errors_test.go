@@ -150,3 +150,67 @@ func TestError_Error_WithParameter(t *testing.T) {
 
 	c.Equal(err.Error(), "response error received (request): Field is required [required] (parameter: name)")
 }
+
+func TestError_Unwrap_NoErrors(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{
+		Type:    ErrorTypeRequest,
+		Message: "request failed",
+	}
+
+	c.Equal(err.Unwrap(), nil)
+}
+
+func TestError_Unwrap_WithErrors(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{
+		Type:    ErrorTypeRequest,
+		Message: "response error received",
+		Errors: &ErrorResponse{
+			Errors: []struct {
+				Code   string `json:"code"`
+				Detail string `json:"detail,omitempty"`
+				Source struct {
+					Parameter string `json:"parameter,omitempty"`
+				} `json:"source,omitempty"`
+			}{
+				{Code: "invalidDomain", Detail: "Invalid domain"},
+				{Code: "duplicate"},
+			},
+		},
+	}
+
+	unwrapped := err.Unwrap()
+	c.Equal(len(unwrapped), 2)
+
+	var apiErr *APIError
+	c.True(errors.As(unwrapped[0], &apiErr))
+	c.Equal(apiErr.Code, "invalidDomain")
+	c.Equal(apiErr.Detail, "Invalid domain")
+}
+
+func TestError_Unwrap_ErrorsAs(t *testing.T) {
+	c := is.New(t)
+
+	err := &Error{
+		Type:    ErrorTypeRequest,
+		Message: "response error received",
+		Errors: &ErrorResponse{
+			Errors: []struct {
+				Code   string `json:"code"`
+				Detail string `json:"detail,omitempty"`
+				Source struct {
+					Parameter string `json:"parameter,omitempty"`
+				} `json:"source,omitempty"`
+			}{
+				{Code: "duplicate", Detail: "Entry already exists"},
+			},
+		},
+	}
+
+	var apiErr *APIError
+	c.True(errors.As(err, &apiErr))
+	c.Equal(apiErr.Code, "duplicate")
+}
