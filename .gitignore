@@ -22,3 +22,6 @@ dist/
 
 # Private journal
 .private-journal/
+
+# Plans documentation
+/docs/plans/**/*
