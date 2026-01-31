@@ -76,3 +76,47 @@ type AnalyticsTimeSeriesResponse struct {
 	Pagination AnalyticsPagination
 	Series     AnalyticsSeriesInfo
 }
+
+// Request types for analytics endpoints
+
+// GetAnalyticsRequest is used for status and devices endpoints.
+type GetAnalyticsRequest struct {
+	ProfileID string
+	Options   *AnalyticsOptions
+}
+
+// GetAnalyticsTimeSeriesRequest is used for status and devices time series.
+type GetAnalyticsTimeSeriesRequest struct {
+	ProfileID string
+	Options   *AnalyticsTimeSeriesOptions
+}
+
+// GetAnalyticsDomainsRequest includes domain-specific filters.
+type GetAnalyticsDomainsRequest struct {
+	ProfileID string
+	Options   *AnalyticsOptions
+	Status    string // Filter: "default", "blocked", "allowed"
+	Root      bool   // Aggregate by root domain
+}
+
+// GetAnalyticsDomainsTimeSeriesRequest includes domain-specific filters for time series.
+type GetAnalyticsDomainsTimeSeriesRequest struct {
+	ProfileID string
+	Options   *AnalyticsTimeSeriesOptions
+	Status    string
+	Root      bool
+}
+
+// GetAnalyticsDestinationsRequest requires a type parameter.
+type GetAnalyticsDestinationsRequest struct {
+	ProfileID string
+	Options   *AnalyticsOptions
+	Type      string // Required: "countries" or "gafam"
+}
+
+// GetAnalyticsDestinationsTimeSeriesRequest requires a type parameter.
+type GetAnalyticsDestinationsTimeSeriesRequest struct {
+	ProfileID string
+	Options   *AnalyticsTimeSeriesOptions
+	Type      string
+}
