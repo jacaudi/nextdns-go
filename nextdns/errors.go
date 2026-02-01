@@ -47,23 +47,111 @@ type Error struct {
 	Meta    map[string]string
 }
 
+// APIError represents a single error from the NextDNS API.
+type APIError struct {
+	Code      string
+	Detail    string
+	Parameter string
+}
+
+// Error returns the string representation of the API error.
+func (e *APIError) Error() string {
+	if e.Detail != "" {
+		if e.Parameter != "" {
+			return fmt.Sprintf("%s [%s] (parameter: %s)", e.Detail, e.Code, e.Parameter)
+		}
+		return fmt.Sprintf("%s [%s]", e.Detail, e.Code)
+	}
+	if e.Parameter != "" {
+		return fmt.Sprintf("%s (parameter: %s)", e.Code, e.Parameter)
+	}
+	return e.Code
+}
+
+// Is reports whether the error matches the target by comparing error codes.
+func (e *APIError) Is(target error) bool {
+	t, ok := target.(*APIError)
+	if !ok {
+		return false
+	}
+	return e.Code == t.Code
+}
+
 // Error returns the string representation of the error.
-// TODO(jacaudi): Improve error handling for multiple errors. See https://github.com/jacaudi/nextdns-go/issues/7
 func (e *Error) Error() string {
 	var out strings.Builder
+	out.WriteString(fmt.Sprintf("%s (%s)", e.Message, e.Type))
 
 	if e.Errors != nil && len(e.Errors.Errors) > 0 {
-		out.WriteString(fmt.Sprintf("%s (%s): ", e.Message, e.Type))
-		for _, er := range e.Errors.Errors {
+		out.WriteString(": ")
+		for i, er := range e.Errors.Errors {
+			if i > 0 {
+				out.WriteString("; ")
+			}
 			if er.Detail != "" {
-				out.WriteString(fmt.Sprintf("%s (%s)", er.Detail, er.Code))
+				out.WriteString(fmt.Sprintf("%s [%s]", er.Detail, er.Code))
 			} else {
 				out.WriteString(er.Code)
 			}
+			if er.Source.Parameter != "" {
+				out.WriteString(fmt.Sprintf(" (parameter: %s)", er.Source.Parameter))
+			}
 		}
-	} else {
-		out.WriteString(e.Message)
 	}
 
 	return out.String()
+}
+
+// Unwrap returns the underlying API errors for use with errors.Is and errors.As.
+// Returns nil if there are no underlying API errors.
+func (e *Error) Unwrap() []error {
+	if e.Errors == nil || len(e.Errors.Errors) == 0 {
+		return nil
+	}
+
+	errs := make([]error, len(e.Errors.Errors))
+	for i, apiErr := range e.Errors.Errors {
+		errs[i] = &APIError{
+			Code:      apiErr.Code,
+			Detail:    apiErr.Detail,
+			Parameter: apiErr.Source.Parameter,
+		}
+	}
+	return errs
+}
+
+// IsNotFound returns true if the error is a not found error.
+func IsNotFound(err error) bool {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Type == ErrorTypeNotFound
+	}
+	return false
+}
+
+// IsAuthError returns true if the error is an authentication error.
+func IsAuthError(err error) bool {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Type == ErrorTypeAuthentication
+	}
+	return false
+}
+
+// IsDuplicateError returns true if the error contains a duplicate error code.
+func IsDuplicateError(err error) bool {
+	return HasErrorCode(err, "duplicate")
+}
+
+// HasErrorCode returns true if the error contains the specified error code.
+func HasErrorCode(err error, code string) bool {
+	var e *Error
+	if errors.As(err, &e) && e.Errors != nil {
+		for _, apiErr := range e.Errors.Errors {
+			if apiErr.Code == code {
+				return true
+			}
+		}
+	}
+	return false
 }
