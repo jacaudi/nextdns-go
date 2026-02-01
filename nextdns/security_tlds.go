@@ -9,6 +9,11 @@ import (
 // securityTldsAPIPath is the HTTP path for the security TLDs API.
 const securityTldsAPIPath = "security/tlds"
 
+// securityTldsIDAPIPath returns the HTTP path for a specific security TLD.
+func securityTldsIDAPIPath(id string) string {
+	return fmt.Sprintf("%s/%s", securityTldsAPIPath, id)
+}
+
 // SecurityTlds represents the security TLDs of a profile.
 type SecurityTlds struct {
 	ID string `json:"id"`
@@ -25,10 +30,17 @@ type ListSecurityTldsRequest struct {
 	ProfileID string
 }
 
+// AddSecurityTldsRequest encapsulates the request for adding a single security TLD.
+type AddSecurityTldsRequest struct {
+	ProfileID string
+	ID        string `json:"id"`
+}
+
 // SecurityTldsService is an interface for communicating with the NextDNS security TLDs API endpoint.
 type SecurityTldsService interface {
 	Create(context.Context, *CreateSecurityTldsRequest) error
 	List(context.Context, *ListSecurityTldsRequest) ([]*SecurityTlds, error)
+	Add(context.Context, *AddSecurityTldsRequest) error
 }
 
 // securityTldsResponse represents the security TLDs response.
@@ -83,4 +95,25 @@ func (s *securityTldsService) List(ctx context.Context, request *ListSecurityTld
 	}
 
 	return response.SecurityTlds, nil
+}
+
+// Add adds a single TLD to the blocked list.
+func (s *securityTldsService) Add(ctx context.Context, request *AddSecurityTldsRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
+	body := struct {
+		ID string `json:"id"`
+	}{
+		ID: request.ID,
+	}
+	req, err := s.client.newRequest(http.MethodPost, path, body)
+	if err != nil {
+		return fmt.Errorf("error creating request to add security TLD %s: %w", request.ID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to add security TLD %s: %w", request.ID, err)
+	}
+
+	return nil
 }
