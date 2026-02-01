@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 // profilesService is the HTTP path for the profiles API.
@@ -33,7 +34,9 @@ type GetProfileRequest struct {
 }
 
 // ListProfileRequest encapsulates the request for listing all the profiles.
-type ListProfileRequest struct{}
+type ListProfileRequest struct {
+	Cursor string
+}
 
 // DeleteProfileRequest encapsulates the request for deleting a profile.
 type DeleteProfileRequest struct {
@@ -45,7 +48,7 @@ type ProfilesService interface {
 	Create(context.Context, *CreateProfileRequest) (string, error)
 	Get(context.Context, *GetProfileRequest) (*Profile, error)
 	Update(context.Context, *UpdateProfileRequest) error
-	List(context.Context, *ListProfileRequest) ([]*Profiles, error)
+	List(context.Context, *ListProfileRequest) (*ListProfilesResponse, error)
 	Delete(context.Context, *DeleteProfileRequest) error
 }
 
@@ -92,6 +95,12 @@ type profilesResponse struct {
 	Errors ErrorResponse `json:"errors,omitempty"`
 }
 
+// ListProfilesResponse represents the response from listing profiles with pagination info.
+type ListProfilesResponse struct {
+	Profiles []*Profiles
+	Cursor   string // Next page cursor, empty if no more pages
+}
+
 // profilesService represents the NextDNS profiles service.
 type profilesService struct {
 	client *Client
@@ -107,9 +116,18 @@ func NewProfilesService(client *Client) *profilesService {
 	}
 }
 
-// List returns a list of profiles.
-func (s *profilesService) List(ctx context.Context, _ *ListProfileRequest) ([]*Profiles, error) {
-	req, err := s.client.newRequest(http.MethodGet, profilesAPIPath, nil)
+// List returns a list of profiles with pagination support.
+func (s *profilesService) List(ctx context.Context, request *ListProfileRequest) (*ListProfilesResponse, error) {
+	var req *http.Request
+	var err error
+
+	if request != nil && request.Cursor != "" {
+		query := url.Values{}
+		query.Set("cursor", request.Cursor)
+		req, err = s.client.newRequestWithQuery(http.MethodGet, profilesAPIPath, query, nil)
+	} else {
+		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, nil)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the profiles: %w", err)
 	}
@@ -120,7 +138,10 @@ func (s *profilesService) List(ctx context.Context, _ *ListProfileRequest) ([]*P
 		return nil, fmt.Errorf("error making a request to list the profiles: %w", err)
 	}
 
-	return response.Profiles, nil
+	return &ListProfilesResponse{
+		Profiles: response.Profiles,
+		Cursor:   response.Metadata.Pagination.Cursor,
+	}, nil
 }
 
 // Create creates a profile and returns a profile ID.
