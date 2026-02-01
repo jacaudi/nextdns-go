@@ -71,3 +71,16 @@ type LogsResponse struct {
 	Pagination LogsPagination
 	Stream     LogsStreamInfo
 }
+
+// Request types for logs endpoints
+
+// GetLogsRequest is used for querying logs.
+type GetLogsRequest struct {
+	ProfileID string
+	Options   *LogsQueryOptions
+}
+
+// ClearLogsRequest is used for clearing logs.
+type ClearLogsRequest struct {
+	ProfileID string
+}
