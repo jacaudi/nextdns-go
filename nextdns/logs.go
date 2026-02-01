@@ -185,6 +185,17 @@ func (s *logsService) Get(ctx context.Context, request *GetLogsRequest) (*LogsRe
 
 // Clear deletes all logs for a profile.
 func (s *logsService) Clear(ctx context.Context, request *ClearLogsRequest) error {
-	// TODO: Implement in Task 5
+	path := logsPath(request.ProfileID)
+
+	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to clear logs: %w", err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to clear logs: %w", err)
+	}
+
 	return nil
 }
