@@ -123,3 +123,31 @@ func TestAllowlistDelete(t *testing.T) {
 
 	c.NoErr(err)
 }
+
+func TestAllowlistAdd(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "POST")
+		c.Equal(r.URL.Path, "/profiles/abc123/allowlist")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {"id": "example.com"}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	active := true
+	err = client.Allowlist.Add(ctx, &AddAllowlistRequest{
+		ProfileID: "abc123",
+		ID:        "example.com",
+		Active:    &active,
+	})
+
+	c.NoErr(err)
+}

@@ -39,12 +39,20 @@ type DeleteAllowlistRequest struct {
 	ID        string
 }
 
+// AddAllowlistRequest encapsulates the request for adding a single allowlist entry.
+type AddAllowlistRequest struct {
+	ProfileID string
+	ID        string `json:"id"`
+	Active    *bool  `json:"active,omitempty"`
+}
+
 // AllowlistService is an interface for communicating with the NextDNS allowlist API endpoint.
 type AllowlistService interface {
 	Create(context.Context, *CreateAllowlistRequest) error
 	List(context.Context, *ListAllowlistRequest) ([]*Allowlist, error)
 	Update(context.Context, *UpdateAllowlistRequest) error
 	Delete(context.Context, *DeleteAllowlistRequest) error
+	Add(context.Context, *AddAllowlistRequest) error
 }
 
 // allowlistResponse represents the allowlist response.
@@ -127,6 +135,29 @@ func (s *allowlistService) Delete(ctx context.Context, request *DeleteAllowlistR
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to delete allow list entry %s: %w", request.ID, err)
+	}
+
+	return nil
+}
+
+// Add adds a single entry to the allowlist.
+func (s *allowlistService) Add(ctx context.Context, request *AddAllowlistRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
+	body := struct {
+		ID     string `json:"id"`
+		Active *bool  `json:"active,omitempty"`
+	}{
+		ID:     request.ID,
+		Active: request.Active,
+	}
+	req, err := s.client.newRequest(http.MethodPost, path, body)
+	if err != nil {
+		return fmt.Errorf("error creating request to add allow list entry %s: %w", request.ID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to add allow list entry %s: %w", request.ID, err)
 	}
 
 	return nil
