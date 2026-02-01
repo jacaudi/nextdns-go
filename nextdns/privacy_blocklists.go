@@ -41,11 +41,19 @@ type AddPrivacyBlocklistsRequest struct {
 	ID        string `json:"id"`
 }
 
+// UpdatePrivacyBlocklistsRequest encapsulates the request for updating a privacy blocklist.
+type UpdatePrivacyBlocklistsRequest struct {
+	ProfileID   string
+	BlocklistID string
+	Active      *bool `json:"active,omitempty"`
+}
+
 // PrivacyBlocklistsService is an interface for communicating with the NextDNS privacy blocklist API endpoint.
 type PrivacyBlocklistsService interface {
 	Create(context.Context, *CreatePrivacyBlocklistsRequest) error
 	List(context.Context, *ListPrivacyBlocklistsRequest) ([]*PrivacyBlocklists, error)
 	Add(context.Context, *AddPrivacyBlocklistsRequest) error
+	Update(context.Context, *UpdatePrivacyBlocklistsRequest) error
 }
 
 // privacyBlocklistsResponse represents the NextDNS privacy blocklist service.
@@ -118,6 +126,27 @@ func (s *privacyBlocklistsService) Add(ctx context.Context, request *AddPrivacyB
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to add privacy blocklist %s: %w", request.ID, err)
+	}
+
+	return nil
+}
+
+// Update modifies a single blocklist entry.
+func (s *privacyBlocklistsService) Update(ctx context.Context, request *UpdatePrivacyBlocklistsRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsIDAPIPath(request.BlocklistID))
+	body := struct {
+		Active *bool `json:"active,omitempty"`
+	}{
+		Active: request.Active,
+	}
+	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	if err != nil {
+		return fmt.Errorf("error creating request to update privacy blocklist %s: %w", request.BlocklistID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to update privacy blocklist %s: %w", request.BlocklistID, err)
 	}
 
 	return nil
