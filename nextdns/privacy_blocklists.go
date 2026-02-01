@@ -48,12 +48,19 @@ type UpdatePrivacyBlocklistsRequest struct {
 	Active      *bool `json:"active,omitempty"`
 }
 
+// DeletePrivacyBlocklistsRequest encapsulates the request for deleting a privacy blocklist.
+type DeletePrivacyBlocklistsRequest struct {
+	ProfileID   string
+	BlocklistID string
+}
+
 // PrivacyBlocklistsService is an interface for communicating with the NextDNS privacy blocklist API endpoint.
 type PrivacyBlocklistsService interface {
 	Create(context.Context, *CreatePrivacyBlocklistsRequest) error
 	List(context.Context, *ListPrivacyBlocklistsRequest) ([]*PrivacyBlocklists, error)
 	Add(context.Context, *AddPrivacyBlocklistsRequest) error
 	Update(context.Context, *UpdatePrivacyBlocklistsRequest) error
+	Delete(context.Context, *DeletePrivacyBlocklistsRequest) error
 }
 
 // privacyBlocklistsResponse represents the NextDNS privacy blocklist service.
@@ -147,6 +154,22 @@ func (s *privacyBlocklistsService) Update(ctx context.Context, request *UpdatePr
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to update privacy blocklist %s: %w", request.BlocklistID, err)
+	}
+
+	return nil
+}
+
+// Delete removes a single blocklist from the privacy settings.
+func (s *privacyBlocklistsService) Delete(ctx context.Context, request *DeletePrivacyBlocklistsRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsIDAPIPath(request.BlocklistID))
+	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete privacy blocklist %s: %w", request.BlocklistID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to delete privacy blocklist %s: %w", request.BlocklistID, err)
 	}
 
 	return nil

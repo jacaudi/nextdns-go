@@ -62,3 +62,29 @@ func TestPrivacyBlocklistsUpdate(t *testing.T) {
 
 	c.NoErr(err)
 }
+
+func TestPrivacyBlocklistsDelete(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "DELETE")
+		c.Equal(r.URL.Path, "/profiles/abc123/privacy/blocklists/nextdns-recommended")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	err = client.PrivacyBlocklists.Delete(ctx, &DeletePrivacyBlocklistsRequest{
+		ProfileID:   "abc123",
+		BlocklistID: "nextdns-recommended",
+	})
+
+	c.NoErr(err)
+}
