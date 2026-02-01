@@ -35,10 +35,17 @@ type ListPrivacyBlocklistsRequest struct {
 	ProfileID string
 }
 
+// AddPrivacyBlocklistsRequest encapsulates the request for adding a single privacy blocklist.
+type AddPrivacyBlocklistsRequest struct {
+	ProfileID string
+	ID        string `json:"id"`
+}
+
 // PrivacyBlocklistsService is an interface for communicating with the NextDNS privacy blocklist API endpoint.
 type PrivacyBlocklistsService interface {
 	Create(context.Context, *CreatePrivacyBlocklistsRequest) error
 	List(context.Context, *ListPrivacyBlocklistsRequest) ([]*PrivacyBlocklists, error)
+	Add(context.Context, *AddPrivacyBlocklistsRequest) error
 }
 
 // privacyBlocklistsResponse represents the NextDNS privacy blocklist service.
@@ -93,4 +100,25 @@ func (s *privacyBlocklistsService) List(ctx context.Context, request *ListPrivac
 	}
 
 	return response.PrivacyBlocklists, nil
+}
+
+// Add adds a single blocklist to the privacy settings.
+func (s *privacyBlocklistsService) Add(ctx context.Context, request *AddPrivacyBlocklistsRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsAPIPath)
+	body := struct {
+		ID string `json:"id"`
+	}{
+		ID: request.ID,
+	}
+	req, err := s.client.newRequest(http.MethodPost, path, body)
+	if err != nil {
+		return fmt.Errorf("error creating request to add privacy blocklist %s: %w", request.ID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to add privacy blocklist %s: %w", request.ID, err)
+	}
+
+	return nil
 }
