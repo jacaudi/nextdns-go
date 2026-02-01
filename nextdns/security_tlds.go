@@ -36,11 +36,19 @@ type AddSecurityTldsRequest struct {
 	ID        string `json:"id"`
 }
 
+// UpdateSecurityTldsRequest encapsulates the request for updating a security TLD.
+type UpdateSecurityTldsRequest struct {
+	ProfileID string
+	TldID     string
+	Active    *bool `json:"active,omitempty"`
+}
+
 // SecurityTldsService is an interface for communicating with the NextDNS security TLDs API endpoint.
 type SecurityTldsService interface {
 	Create(context.Context, *CreateSecurityTldsRequest) error
 	List(context.Context, *ListSecurityTldsRequest) ([]*SecurityTlds, error)
 	Add(context.Context, *AddSecurityTldsRequest) error
+	Update(context.Context, *UpdateSecurityTldsRequest) error
 }
 
 // securityTldsResponse represents the security TLDs response.
@@ -113,6 +121,27 @@ func (s *securityTldsService) Add(ctx context.Context, request *AddSecurityTldsR
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to add security TLD %s: %w", request.ID, err)
+	}
+
+	return nil
+}
+
+// Update modifies a single TLD entry.
+func (s *securityTldsService) Update(ctx context.Context, request *UpdateSecurityTldsRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsIDAPIPath(request.TldID))
+	body := struct {
+		Active *bool `json:"active,omitempty"`
+	}{
+		Active: request.Active,
+	}
+	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	if err != nil {
+		return fmt.Errorf("error creating request to update security TLD %s: %w", request.TldID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to update security TLD %s: %w", request.TldID, err)
 	}
 
 	return nil
