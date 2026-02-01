@@ -1,6 +1,9 @@
 package nextdns
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // logsAPIPath is the HTTP path for the logs API.
 const logsAPIPath = "logs"
@@ -83,4 +86,39 @@ type GetLogsRequest struct {
 // ClearLogsRequest is used for clearing logs.
 type ClearLogsRequest struct {
 	ProfileID string
+}
+
+// LogsService provides access to NextDNS query logs.
+type LogsService interface {
+	// Get queries DNS query logs with filtering and pagination.
+	Get(ctx context.Context, request *GetLogsRequest) (*LogsResponse, error)
+
+	// Clear deletes all logs for a profile.
+	Clear(ctx context.Context, request *ClearLogsRequest) error
+}
+
+type logsService struct {
+	client *Client
+}
+
+// Compile-time check that logsService implements LogsService.
+var _ LogsService = &logsService{}
+
+// NewLogsService creates a new logs service.
+func NewLogsService(client *Client) *logsService {
+	return &logsService{
+		client: client,
+	}
+}
+
+// Get queries DNS query logs with filtering and pagination.
+func (s *logsService) Get(ctx context.Context, request *GetLogsRequest) (*LogsResponse, error) {
+	// TODO: Implement in Task 4
+	return nil, nil
+}
+
+// Clear deletes all logs for a profile.
+func (s *logsService) Clear(ctx context.Context, request *ClearLogsRequest) error {
+	// TODO: Implement in Task 5
+	return nil
 }

@@ -63,6 +63,9 @@ type Client struct {
 	// Services for Analytics.
 	Analytics AnalyticsService
 
+	// Services for Logs.
+	Logs LogsService
+
 	// Debug mode for the HTTP requests.
 	Debug bool
 }
@@ -175,6 +178,9 @@ func New(opts ...ClientOption) (*Client, error) {
 
 	// Initialize the services for Analytics.
 	c.Analytics = NewAnalyticsService(c)
+
+	// Initialize the services for Logs.
+	c.Logs = NewLogsService(c)
 
 	return c, nil
 }
