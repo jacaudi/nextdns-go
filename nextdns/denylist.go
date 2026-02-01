@@ -33,11 +33,18 @@ type UpdateDenylistRequest struct {
 	Denylist  *Denylist
 }
 
+// DeleteDenylistRequest encapsulates the request for deleting a denylist entry.
+type DeleteDenylistRequest struct {
+	ProfileID string
+	ID        string
+}
+
 // DenylistService is an interface for communicating with the NextDNS denylist API endpoint.
 type DenylistService interface {
 	Create(context.Context, *CreateDenylistRequest) error
 	List(context.Context, *ListDenylistRequest) ([]*Denylist, error)
 	Update(context.Context, *UpdateDenylistRequest) error
+	Delete(context.Context, *DeleteDenylistRequest) error
 }
 
 // denylistResponse represents the denylist response.
@@ -104,6 +111,22 @@ func (s *denylistService) Update(ctx context.Context, request *UpdateDenylistReq
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the deny list id %s: %w", request.ID, err)
+	}
+
+	return nil
+}
+
+// Delete removes an entry from the denylist.
+func (s *denylistService) Delete(ctx context.Context, request *DeleteDenylistRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistIDAPIPath(request.ID))
+	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete deny list entry %s: %w", request.ID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to delete deny list entry %s: %w", request.ID, err)
 	}
 
 	return nil
