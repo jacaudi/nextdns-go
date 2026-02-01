@@ -36,11 +36,19 @@ type AddPrivacyNativesRequest struct {
 	ID        string `json:"id"`
 }
 
+// UpdatePrivacyNativesRequest encapsulates the request for updating a privacy native.
+type UpdatePrivacyNativesRequest struct {
+	ProfileID string
+	NativeID  string
+	Active    *bool `json:"active,omitempty"`
+}
+
 // PrivacyNativesService is an interface for communicating with the NextDNS privacy native tracking protection API endpoint.
 type PrivacyNativesService interface {
 	Create(context.Context, *CreatePrivacyNativesRequest) error
 	List(context.Context, *ListPrivacyNativesRequest) ([]*PrivacyNatives, error)
 	Add(context.Context, *AddPrivacyNativesRequest) error
+	Update(context.Context, *UpdatePrivacyNativesRequest) error
 }
 
 // privacyNativesResponse represents the NextDNS privacy native tracking protection service.
@@ -113,6 +121,27 @@ func (s *privacyNativesService) Add(ctx context.Context, request *AddPrivacyNati
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to add privacy native %s: %w", request.ID, err)
+	}
+
+	return nil
+}
+
+// Update modifies a single native tracking protection entry.
+func (s *privacyNativesService) Update(ctx context.Context, request *UpdatePrivacyNativesRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesIDAPIPath(request.NativeID))
+	body := struct {
+		Active *bool `json:"active,omitempty"`
+	}{
+		Active: request.Active,
+	}
+	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	if err != nil {
+		return fmt.Errorf("error creating request to update privacy native %s: %w", request.NativeID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to update privacy native %s: %w", request.NativeID, err)
 	}
 
 	return nil
