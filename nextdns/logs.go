@@ -2,6 +2,10 @@ package nextdns
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -111,10 +115,72 @@ func NewLogsService(client *Client) *logsService {
 	}
 }
 
+// buildLogsQuery converts LogsQueryOptions to url.Values.
+func buildLogsQuery(opts *LogsQueryOptions) url.Values {
+	query := url.Values{}
+	if opts == nil {
+		return query
+	}
+	if opts.From != "" {
+		query.Set("from", opts.From)
+	}
+	if opts.To != "" {
+		query.Set("to", opts.To)
+	}
+	if opts.Sort != "" {
+		query.Set("sort", opts.Sort)
+	}
+	if opts.Limit > 0 {
+		query.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	if opts.Cursor != "" {
+		query.Set("cursor", opts.Cursor)
+	}
+	if opts.Device != "" {
+		query.Set("device", opts.Device)
+	}
+	if opts.Status != "" {
+		query.Set("status", opts.Status)
+	}
+	if opts.Search != "" {
+		query.Set("search", opts.Search)
+	}
+	if opts.Raw {
+		query.Set("raw", "true")
+	}
+	return query
+}
+
+func logsPath(profileID string) string {
+	return fmt.Sprintf("%s/%s/%s", profilesAPIPath, profileID, logsAPIPath)
+}
+
 // Get queries DNS query logs with filtering and pagination.
 func (s *logsService) Get(ctx context.Context, request *GetLogsRequest) (*LogsResponse, error) {
-	// TODO: Implement in Task 4
-	return nil, nil
+	path := logsPath(request.ProfileID)
+	query := buildLogsQuery(request.Options)
+
+	// Append query string to path if there are query parameters
+	if len(query) > 0 {
+		path = path + "?" + query.Encode()
+	}
+
+	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get logs: %w", err)
+	}
+
+	response := logsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get logs: %w", err)
+	}
+
+	return &LogsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Stream:     response.Meta.Stream,
+	}, nil
 }
 
 // Clear deletes all logs for a profile.
