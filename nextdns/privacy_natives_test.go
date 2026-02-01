@@ -62,3 +62,29 @@ func TestPrivacyNativesUpdate(t *testing.T) {
 
 	c.NoErr(err)
 }
+
+func TestPrivacyNativesDelete(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "DELETE")
+		c.Equal(r.URL.Path, "/profiles/abc123/privacy/natives/apple")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	err = client.PrivacyNatives.Delete(ctx, &DeletePrivacyNativesRequest{
+		ProfileID: "abc123",
+		NativeID:  "apple",
+	})
+
+	c.NoErr(err)
+}

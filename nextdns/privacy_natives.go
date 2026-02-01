@@ -43,12 +43,19 @@ type UpdatePrivacyNativesRequest struct {
 	Active    *bool `json:"active,omitempty"`
 }
 
+// DeletePrivacyNativesRequest encapsulates the request for deleting a privacy native.
+type DeletePrivacyNativesRequest struct {
+	ProfileID string
+	NativeID  string
+}
+
 // PrivacyNativesService is an interface for communicating with the NextDNS privacy native tracking protection API endpoint.
 type PrivacyNativesService interface {
 	Create(context.Context, *CreatePrivacyNativesRequest) error
 	List(context.Context, *ListPrivacyNativesRequest) ([]*PrivacyNatives, error)
 	Add(context.Context, *AddPrivacyNativesRequest) error
 	Update(context.Context, *UpdatePrivacyNativesRequest) error
+	Delete(context.Context, *DeletePrivacyNativesRequest) error
 }
 
 // privacyNativesResponse represents the NextDNS privacy native tracking protection service.
@@ -142,6 +149,22 @@ func (s *privacyNativesService) Update(ctx context.Context, request *UpdatePriva
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to update privacy native %s: %w", request.NativeID, err)
+	}
+
+	return nil
+}
+
+// Delete removes a single native tracking protection.
+func (s *privacyNativesService) Delete(ctx context.Context, request *DeletePrivacyNativesRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesIDAPIPath(request.NativeID))
+	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete privacy native %s: %w", request.NativeID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to delete privacy native %s: %w", request.NativeID, err)
 	}
 
 	return nil
