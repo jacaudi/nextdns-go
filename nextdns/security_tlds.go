@@ -43,12 +43,19 @@ type UpdateSecurityTldsRequest struct {
 	Active    *bool `json:"active,omitempty"`
 }
 
+// DeleteSecurityTldsRequest encapsulates the request for deleting a security TLD.
+type DeleteSecurityTldsRequest struct {
+	ProfileID string
+	TldID     string
+}
+
 // SecurityTldsService is an interface for communicating with the NextDNS security TLDs API endpoint.
 type SecurityTldsService interface {
 	Create(context.Context, *CreateSecurityTldsRequest) error
 	List(context.Context, *ListSecurityTldsRequest) ([]*SecurityTlds, error)
 	Add(context.Context, *AddSecurityTldsRequest) error
 	Update(context.Context, *UpdateSecurityTldsRequest) error
+	Delete(context.Context, *DeleteSecurityTldsRequest) error
 }
 
 // securityTldsResponse represents the security TLDs response.
@@ -142,6 +149,22 @@ func (s *securityTldsService) Update(ctx context.Context, request *UpdateSecurit
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making request to update security TLD %s: %w", request.TldID, err)
+	}
+
+	return nil
+}
+
+// Delete removes a single TLD from the blocked list.
+func (s *securityTldsService) Delete(ctx context.Context, request *DeleteSecurityTldsRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsIDAPIPath(request.TldID))
+	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete security TLD %s: %w", request.TldID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to delete security TLD %s: %w", request.TldID, err)
 	}
 
 	return nil

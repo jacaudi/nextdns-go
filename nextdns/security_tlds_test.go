@@ -62,3 +62,29 @@ func TestSecurityTldsUpdate(t *testing.T) {
 
 	c.NoErr(err)
 }
+
+func TestSecurityTldsDelete(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "DELETE")
+		c.Equal(r.URL.Path, "/profiles/abc123/security/tlds/xyz")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	err = client.SecurityTlds.Delete(ctx, &DeleteSecurityTldsRequest{
+		ProfileID: "abc123",
+		TldID:     "xyz",
+	})
+
+	c.NoErr(err)
+}
