@@ -97,3 +97,29 @@ func TestDenylistUpdate(t *testing.T) {
 
 	c.NoErr(err)
 }
+
+func TestDenylistDelete(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "DELETE")
+		c.Equal(r.URL.Path, "/profiles/abc123/denylist/malware.com")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	err = client.Denylist.Delete(ctx, &DeleteDenylistRequest{
+		ProfileID: "abc123",
+		ID:        "malware.com",
+	})
+
+	c.NoErr(err)
+}
