@@ -10,6 +10,11 @@ import (
 // privacyBlocklistsAPIPath is the HTTP path for the privacy blocklist API.
 const privacyBlocklistsAPIPath = "privacy/blocklists"
 
+// privacyBlocklistsIDAPIPath returns the HTTP path for a specific privacy blocklist.
+func privacyBlocklistsIDAPIPath(id string) string {
+	return fmt.Sprintf("%s/%s", privacyBlocklistsAPIPath, id)
+}
+
 // PrivacyBlocklists represents a privacy blocklist of a profile.
 type PrivacyBlocklists struct {
 	ID        string     `json:"id"`
