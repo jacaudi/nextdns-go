@@ -16,7 +16,7 @@ jobs:
   lint:
     # Skip on tag pushes - code should have been tested already
     if: "!startsWith(github.ref, 'refs/tags/v')"
-    uses: jacaudi/github-actions/.github/workflows/lint.yml@v0.8.0
+    uses: jacaudi/github-actions/.github/workflows/lint.yml@v0.10.0
     with:
       go: true
       go-version: 'stable'
@@ -24,7 +24,7 @@ jobs:
   test:
     # Skip on tag pushes - code should have been tested already
     if: "!startsWith(github.ref, 'refs/tags/v')"
-    uses: jacaudi/github-actions/.github/workflows/test.yml@v0.8.0
+    uses: jacaudi/github-actions/.github/workflows/test.yml@v0.10.0
     with:
       test-framework: go
       coverage: true
@@ -39,7 +39,7 @@ jobs:
   release:
     needs: [lint, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: jacaudi/github-actions/.github/workflows/semantic-release.yml@v0.8.0
+    uses: jacaudi/github-actions/.github/workflows/semantic-release.yml@v0.10.0
     with:
       use-github-app: true
       hooks: goreleaser
