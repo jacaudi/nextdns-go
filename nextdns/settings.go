@@ -15,6 +15,7 @@ type Settings struct {
 	BlockPage   *SettingsBlockPage   `json:"blockPage,omitempty"`
 	Performance *SettingsPerformance `json:"performance,omitempty"`
 	Web3        bool                 `json:"web3"`
+	BAV         bool                 `json:"bav"`
 }
 
 // UpdateSettingsRequest encapsulates the request for updating the settings of a profile.
