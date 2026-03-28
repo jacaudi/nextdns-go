@@ -55,6 +55,7 @@ type ProfilesService interface {
 // Profile represents a NextDNS profile.
 type Profile struct {
 	Name            string           `json:"name,omitempty"`
+	Fingerprint     string           `json:"fingerprint,omitempty"`
 	Security        *Security        `json:"security,omitempty"`
 	Privacy         *Privacy         `json:"privacy,omitempty"`
 	ParentalControl *ParentalControl `json:"parentalControl,omitempty"`

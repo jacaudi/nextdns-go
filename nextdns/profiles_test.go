@@ -66,6 +66,31 @@ func TestProfilesListWithCursor(t *testing.T) {
 	c.Equal(response.Cursor, "") // Empty cursor means no more pages
 }
 
+func TestProfilesGet(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "GET")
+		c.Equal(r.URL.Path, "/profiles/abc123")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {"name": "My Profile", "fingerprint": "fp04d207c439ee4858"}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	profile, err := client.Profiles.Get(ctx, &GetProfileRequest{ProfileID: "abc123"})
+
+	c.NoErr(err)
+	c.Equal(profile.Name, "My Profile")
+	c.Equal(profile.Fingerprint, "fp04d207c439ee4858")
+}
+
 func TestProfilesListNilRequest(t *testing.T) {
 	c := is.New(t)
 
