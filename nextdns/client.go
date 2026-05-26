@@ -4,15 +4,16 @@ package nextdns
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/hashicorp/go-cleanhttp"
+	"time"
 )
 
 const (
@@ -20,6 +21,31 @@ const (
 	contentType = "application/json"
 	userAgent   = "nextdns-go"
 )
+
+// defaultHTTPClient returns the SDK's default *http.Client.
+// It carries an overall request timeout, TLS 1.3 floor, and tuned transport
+// settings per go-standards §15.1.
+func defaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS13,
+			},
+			DialContext: (&net.Dialer{
+				Timeout:   5 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout:   5 * time.Second,
+			ResponseHeaderTimeout: 10 * time.Second,
+			IdleConnTimeout:       90 * time.Second,
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   10,
+			MaxConnsPerHost:       25,
+			ForceAttemptHTTP2:     true,
+		},
+	}
+}
 
 // Client represents a NextDNS client.
 type Client struct {
@@ -115,7 +141,7 @@ func WithDebug() ClientOption {
 func WithHTTPClient(client *http.Client) ClientOption {
 	return func(c *Client) error {
 		if client == nil {
-			client = cleanhttp.DefaultClient()
+			client = defaultHTTPClient()
 		}
 
 		c.client = client
@@ -131,7 +157,7 @@ func New(opts ...ClientOption) (*Client, error) {
 	}
 
 	c := &Client{
-		client:  cleanhttp.DefaultClient(),
+		client:  defaultHTTPClient(),
 		baseURL: baseURL,
 	}
 

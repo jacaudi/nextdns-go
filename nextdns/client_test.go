@@ -1,6 +1,8 @@
 package nextdns
 
 import (
+	"crypto/tls"
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -34,4 +36,24 @@ func TestNewRequestWithQueryEmpty(t *testing.T) {
 	c.NoErr(err)
 
 	c.Equal(req.URL.String(), "https://api.nextdns.io/profiles/abc123/analytics/status")
+}
+
+func TestDefaultClientHasTimeout(t *testing.T) {
+	c := is.New(t)
+
+	client, err := New(WithBaseURL("https://api.nextdns.io/"))
+	c.NoErr(err)
+	c.True(client.client.Timeout > 0)
+}
+
+func TestDefaultClientTLSMinVersion(t *testing.T) {
+	c := is.New(t)
+
+	client, err := New(WithBaseURL("https://api.nextdns.io/"))
+	c.NoErr(err)
+
+	tr, ok := client.client.Transport.(*http.Transport)
+	c.True(ok)
+	c.True(tr.TLSClientConfig != nil)
+	c.Equal(tr.TLSClientConfig.MinVersion, uint16(tls.VersionTLS13))
 }
