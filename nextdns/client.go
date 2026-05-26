@@ -113,9 +113,9 @@ func WithBaseURL(baseURL string) ClientOption {
 }
 
 // WithAPIKey sets the API key to be used for requests.
-func WithAPIKey(apiKey string) ClientOption {
+func WithAPIKey(apiKey Secret) ClientOption {
 	return func(c *Client) error {
-		if apiKey == "" {
+		if apiKey.Expose() == "" {
 			return ErrEmptyAPIToken
 		}
 
@@ -421,14 +421,14 @@ func (c *Client) newRequestWithQuery(method string, path string, query url.Value
 	return req, nil
 }
 
-// authHeader represents a RoundTripper that adds an authorization header to the request.
+// authTransport adds the NextDNS authentication header to outgoing requests.
 type authTransport struct {
 	rt     http.RoundTripper
-	apiKey string
+	apiKey Secret
 }
 
 // RoundTrip adds the authorization header to requests.
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("X-Api-Key", t.apiKey)
+	req.Header.Add("X-Api-Key", t.apiKey.Expose())
 	return t.rt.RoundTrip(req)
 }
