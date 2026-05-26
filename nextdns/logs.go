@@ -160,12 +160,7 @@ func (s *logsService) Get(ctx context.Context, request *GetLogsRequest) (*LogsRe
 	path := logsPath(request.ProfileID)
 	query := buildLogsQuery(request.Options)
 
-	// Append query string to path if there are query parameters
-	if len(query) > 0 {
-		path = path + "?" + query.Encode()
-	}
-
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get logs: %w", err)
 	}
@@ -187,7 +182,7 @@ func (s *logsService) Get(ctx context.Context, request *GetLogsRequest) (*LogsRe
 func (s *logsService) Clear(ctx context.Context, request *ClearLogsRequest) error {
 	path := logsPath(request.ProfileID)
 
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to clear logs: %w", err)
 	}

@@ -49,7 +49,7 @@ func NewSetupService(client *Client) SetupService {
 // Get returns the setup settings of a profile.
 func (s *setupService) Get(ctx context.Context, request *GetSetupRequest) (*Setup, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), setupAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the setup settings: %w", err)
 	}

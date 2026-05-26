@@ -327,53 +327,9 @@ func (c *Client) handleResponse(res *http.Response, v interface{}) error {
 	return nil
 }
 
-// newRequest creates a new HTTP request.
-func (c *Client) newRequest(method string, path string, body interface{}) (*http.Request, error) {
-	u, err := c.baseURL.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var req *http.Request
-	switch method {
-	case http.MethodGet:
-		if c.Debug {
-			fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s\n", method, u.String())
-		}
-		req, err = http.NewRequest(method, u.String(), nil)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		buf := new(bytes.Buffer)
-		if body != nil {
-			err = json.NewEncoder(buf).Encode(body)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if c.Debug {
-			if buf.String() == "" {
-				fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s\n", method, u.String())
-			} else {
-				fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s, Body:%s\n", method, u.String(), strings.TrimSuffix(buf.String(), "\n"))
-			}
-		}
-		req, err = http.NewRequest(method, u.String(), buf)
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set("Content-Type", contentType)
-	}
-
-	req.Header.Set("Accept", contentType)
-	req.Header.Set("User-Agent", userAgent)
-	return req, nil
-}
-
-// newRequestWithQuery creates a new HTTP request with query parameters.
-func (c *Client) newRequestWithQuery(method string, path string, query url.Values, body interface{}) (*http.Request, error) {
+// newRequest creates a new HTTP request with optional query parameters and body.
+// Pass nil for query and/or body when not needed.
+func (c *Client) newRequest(method string, path string, query url.Values, body interface{}) (*http.Request, error) {
 	u, err := c.baseURL.Parse(path)
 	if err != nil {
 		return nil, err
@@ -383,39 +339,32 @@ func (c *Client) newRequestWithQuery(method string, path string, query url.Value
 		u.RawQuery = query.Encode()
 	}
 
-	var req *http.Request
-	switch method {
-	case http.MethodGet:
-		if c.Debug {
-			fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s\n", method, u.String())
-		}
-		req, err = http.NewRequest(method, u.String(), nil)
-		if err != nil {
-			return nil, err
-		}
-	default:
+	var bodyReader io.Reader
+	if body != nil && method != http.MethodGet {
 		buf := new(bytes.Buffer)
-		if body != nil {
-			err = json.NewEncoder(buf).Encode(body)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if c.Debug {
-			if buf.String() == "" {
-				fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s\n", method, u.String())
-			} else {
-				fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s, Body:%s\n", method, u.String(), strings.TrimSuffix(buf.String(), "\n"))
-			}
-		}
-		req, err = http.NewRequest(method, u.String(), buf)
-		if err != nil {
+		if err := json.NewEncoder(buf).Encode(body); err != nil {
 			return nil, err
 		}
-
-		req.Header.Set("Content-Type", contentType)
+		bodyReader = buf
 	}
 
+	if c.Debug {
+		if bodyReader == nil {
+			fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s\n", method, u.String())
+		} else {
+			buf := bodyReader.(*bytes.Buffer)
+			fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s, Body:%s\n", method, u.String(), strings.TrimSuffix(buf.String(), "\n"))
+		}
+	}
+
+	req, err := http.NewRequest(method, u.String(), bodyReader)
+	if err != nil {
+		return nil, err
+	}
+
+	if bodyReader != nil {
+		req.Header.Set("Content-Type", contentType)
+	}
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("User-Agent", userAgent)
 	return req, nil

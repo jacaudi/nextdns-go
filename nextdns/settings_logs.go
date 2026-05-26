@@ -62,7 +62,7 @@ func NewSettingsLogsService(client *Client) SettingsLogsService {
 // Get returns the settings logs of a profile.
 func (s *settingsLogsService) Get(ctx context.Context, request *GetSettingsLogsRequest) (*SettingsLogs, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsLogsAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the logs settings: %w", err)
 	}
@@ -79,7 +79,7 @@ func (s *settingsLogsService) Get(ctx context.Context, request *GetSettingsLogsR
 // Update updates the settings logs of a profile.
 func (s *settingsLogsService) Update(ctx context.Context, request *UpdateSettingsLogsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsLogsAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.SettingsLogs)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.SettingsLogs)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the logs settings: %w", err)
 	}

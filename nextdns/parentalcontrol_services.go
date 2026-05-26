@@ -63,7 +63,7 @@ func NewParentalControlServicesService(client *Client) ParentalControlServicesSe
 // Create creates a parental control services list.
 func (s *parentalControlServicesService) Create(ctx context.Context, request *CreateParentalControlServicesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlServicesAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.ParentalControlServices)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.ParentalControlServices)
 	if err != nil {
 		return fmt.Errorf("error creating request to create a parental control services: %w", err)
 	}
@@ -80,7 +80,7 @@ func (s *parentalControlServicesService) Create(ctx context.Context, request *Cr
 // List returns a parental control services list.
 func (s *parentalControlServicesService) List(ctx context.Context, request *ListParentalControlServicesRequest) ([]*ParentalControlServices, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlServicesAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the parental control services: %w", err)
 	}
@@ -97,7 +97,7 @@ func (s *parentalControlServicesService) List(ctx context.Context, request *List
 // Update updates a parental control services list.
 func (s *parentalControlServicesService) Update(ctx context.Context, request *UpdateParentalControlServicesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlServicesIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodPatch, path, request.ParentalControlServices)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.ParentalControlServices)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the parental control services: %w", err)
 	}

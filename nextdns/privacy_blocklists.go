@@ -85,7 +85,7 @@ func NewPrivacyBlocklistsService(client *Client) PrivacyBlocklistsService {
 // Create creates a privacy blocklist list for a profile.
 func (s *privacyBlocklistsService) Create(ctx context.Context, request *CreatePrivacyBlocklistsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.PrivacyBlocklists)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.PrivacyBlocklists)
 	if err != nil {
 		return fmt.Errorf("error creating request to create a privacy blocklist: %w", err)
 	}
@@ -102,7 +102,7 @@ func (s *privacyBlocklistsService) Create(ctx context.Context, request *CreatePr
 // List returns the privacy blocklist for a profile.
 func (s *privacyBlocklistsService) List(ctx context.Context, request *ListPrivacyBlocklistsRequest) ([]*PrivacyBlocklists, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the privacy blocklist: %w", err)
 	}
@@ -124,7 +124,7 @@ func (s *privacyBlocklistsService) Add(ctx context.Context, request *AddPrivacyB
 	}{
 		ID: request.ID,
 	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to add privacy blocklist %s: %w", request.ID, err)
 	}
@@ -145,7 +145,7 @@ func (s *privacyBlocklistsService) Update(ctx context.Context, request *UpdatePr
 	}{
 		Active: request.Active,
 	}
-	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to update privacy blocklist %s: %w", request.BlocklistID, err)
 	}
@@ -161,7 +161,7 @@ func (s *privacyBlocklistsService) Update(ctx context.Context, request *UpdatePr
 // Delete removes a single blocklist from the privacy settings.
 func (s *privacyBlocklistsService) Delete(ctx context.Context, request *DeletePrivacyBlocklistsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsIDAPIPath(request.BlocklistID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete privacy blocklist %s: %w", request.BlocklistID, err)
 	}

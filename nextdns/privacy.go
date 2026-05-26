@@ -56,7 +56,7 @@ func NewPrivacyService(client *Client) PrivacyService {
 // Get returns the privacy settings of a profile.
 func (s *privacyService) Get(ctx context.Context, request *GetPrivacyRequest) (*Privacy, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the privacy: %w", err)
 	}
@@ -73,7 +73,7 @@ func (s *privacyService) Get(ctx context.Context, request *GetPrivacyRequest) (*
 // Update updates the privacy settings of a profile.
 func (s *privacyService) Update(ctx context.Context, request *UpdatePrivacyRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Privacy)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Privacy)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the privacy: %w", err)
 	}

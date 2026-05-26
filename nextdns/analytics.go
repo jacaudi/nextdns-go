@@ -216,7 +216,7 @@ func (s *analyticsService) GetStatus(ctx context.Context, request *GetAnalyticsR
 	path := analyticsPath(request.ProfileID, "status")
 	query := buildAnalyticsQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics status: %w", err)
 	}
@@ -238,7 +238,7 @@ func (s *analyticsService) GetStatusSeries(ctx context.Context, request *GetAnal
 	path := analyticsPath(request.ProfileID, "status;series")
 	query := buildTimeSeriesQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics status series: %w", err)
 	}
@@ -267,7 +267,7 @@ func (s *analyticsService) GetDomains(ctx context.Context, request *GetAnalytics
 		query.Set("root", "true")
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics domains: %w", err)
 	}
@@ -295,7 +295,7 @@ func (s *analyticsService) GetDomainsSeries(ctx context.Context, request *GetAna
 		query.Set("root", "true")
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics domains series: %w", err)
 	}
@@ -318,7 +318,7 @@ func (s *analyticsService) GetDevices(ctx context.Context, request *GetAnalytics
 	path := analyticsPath(request.ProfileID, "devices")
 	query := buildAnalyticsQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics devices: %w", err)
 	}
@@ -340,7 +340,7 @@ func (s *analyticsService) GetDevicesSeries(ctx context.Context, request *GetAna
 	path := analyticsPath(request.ProfileID, "devices;series")
 	query := buildTimeSeriesQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics devices series: %w", err)
 	}
@@ -366,7 +366,7 @@ func (s *analyticsService) GetDestinations(ctx context.Context, request *GetAnal
 		query.Set("type", request.Type)
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics destinations: %w", err)
 	}
@@ -391,7 +391,7 @@ func (s *analyticsService) GetDestinationsSeries(ctx context.Context, request *G
 		query.Set("type", request.Type)
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics destinations series: %w", err)
 	}

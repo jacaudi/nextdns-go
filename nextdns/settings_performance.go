@@ -55,7 +55,7 @@ func NewSettingsPerformanceService(client *Client) SettingsPerformanceService {
 // Get returns the performance settings of a profile.
 func (s *settingsPerformanceService) Get(ctx context.Context, request *GetSettingsPerformanceRequest) (*SettingsPerformance, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsPerformanceAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the performance settings: %w", err)
 	}
@@ -72,7 +72,7 @@ func (s *settingsPerformanceService) Get(ctx context.Context, request *GetSettin
 // Update updates the performance settings of a profile.
 func (s *settingsPerformanceService) Update(ctx context.Context, request *UpdateSettingsPerformanceRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsPerformanceAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.SettingsPerformance)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.SettingsPerformance)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the performance settings: %w", err)
 	}

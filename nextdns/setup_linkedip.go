@@ -56,7 +56,7 @@ func NewSetupLinkedIPService(client *Client) SetupLinkedIPService {
 // Get returns the setup linked ip of a profile.
 func (s *setupLinkedIPService) Get(ctx context.Context, request *GetSetupLinkedIPRequest) (*SetupLinkedIP, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), setupLinkedIPAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the setup linked ip settings: %w", err)
 	}
@@ -73,7 +73,7 @@ func (s *setupLinkedIPService) Get(ctx context.Context, request *GetSetupLinkedI
 // Update updates the setup linked ip of a profile.
 func (s *setupLinkedIPService) Update(ctx context.Context, request *UpdateSetupLinkedIPRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), setupLinkedIPAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.SetupLinkedIP)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.SetupLinkedIP)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the setup linked ip settings: %w", err)
 	}

@@ -126,9 +126,9 @@ func (s *profilesService) List(ctx context.Context, request *ListProfileRequest)
 	if request != nil && request.Cursor != "" {
 		query := url.Values{}
 		query.Set("cursor", request.Cursor)
-		req, err = s.client.newRequestWithQuery(http.MethodGet, profilesAPIPath, query, nil)
+		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, query, nil)
 	} else {
-		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, nil)
+		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, nil, nil)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the profiles: %w", err)
@@ -148,7 +148,7 @@ func (s *profilesService) List(ctx context.Context, request *ListProfileRequest)
 
 // Create creates a profile and returns a profile ID.
 func (s *profilesService) Create(ctx context.Context, request *CreateProfileRequest) (string, error) {
-	req, err := s.client.newRequest(http.MethodPost, profilesAPIPath, request)
+	req, err := s.client.newRequest(http.MethodPost, profilesAPIPath, nil, request)
 	if err != nil {
 		return "", fmt.Errorf("error creating request to create a profile: %w", err)
 	}
@@ -165,7 +165,7 @@ func (s *profilesService) Create(ctx context.Context, request *CreateProfileRequ
 // Update updates the settings of a profile.
 func (s *profilesService) Update(ctx context.Context, request *UpdateProfileRequest) error {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Profile)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Profile)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the profile: %w", err)
 	}
@@ -182,7 +182,7 @@ func (s *profilesService) Update(ctx context.Context, request *UpdateProfileRequ
 // Get returns a profile.
 func (s *profilesService) Get(ctx context.Context, request *GetProfileRequest) (*Profile, error) {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the profile: %w", err)
 	}
@@ -199,7 +199,7 @@ func (s *profilesService) Get(ctx context.Context, request *GetProfileRequest) (
 // Delete deletes a profile.
 func (s *profilesService) Delete(ctx context.Context, request *DeleteProfileRequest) error {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete the profile: %w", err)
 	}

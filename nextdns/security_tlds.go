@@ -80,7 +80,7 @@ func NewSecurityTldsService(client *Client) SecurityTldsService {
 // Create creates a security TLDs list.
 func (s *securityTldsService) Create(ctx context.Context, request *CreateSecurityTldsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.SecurityTlds)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.SecurityTlds)
 	if err != nil {
 		return fmt.Errorf("error creating request to create a security tlds list: %w", err)
 	}
@@ -97,7 +97,7 @@ func (s *securityTldsService) Create(ctx context.Context, request *CreateSecurit
 // List returns a security TLDs list.
 func (s *securityTldsService) List(ctx context.Context, request *ListSecurityTldsRequest) ([]*SecurityTlds, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the security tlds list: %w", err)
 	}
@@ -119,7 +119,7 @@ func (s *securityTldsService) Add(ctx context.Context, request *AddSecurityTldsR
 	}{
 		ID: request.ID,
 	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to add security TLD %s: %w", request.ID, err)
 	}
@@ -140,7 +140,7 @@ func (s *securityTldsService) Update(ctx context.Context, request *UpdateSecurit
 	}{
 		Active: request.Active,
 	}
-	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to update security TLD %s: %w", request.TldID, err)
 	}
@@ -156,7 +156,7 @@ func (s *securityTldsService) Update(ctx context.Context, request *UpdateSecurit
 // Delete removes a single TLD from the blocked list.
 func (s *securityTldsService) Delete(ctx context.Context, request *DeleteSecurityTldsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsIDAPIPath(request.TldID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete security TLD %s: %w", request.TldID, err)
 	}

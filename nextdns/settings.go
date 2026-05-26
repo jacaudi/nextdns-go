@@ -57,7 +57,7 @@ func NewSettingsService(client *Client) SettingsService {
 // Get returns the settings of a profile.
 func (s *settingsService) Get(ctx context.Context, request *GetSettingsRequest) (*Settings, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the settings: %w", err)
 	}
@@ -74,7 +74,7 @@ func (s *settingsService) Get(ctx context.Context, request *GetSettingsRequest) 
 // Update updates the settings of a profile.
 func (s *settingsService) Update(ctx context.Context, request *UpdateSettingsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Settings)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Settings)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the settings: %w", err)
 	}

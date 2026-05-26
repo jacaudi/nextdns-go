@@ -77,7 +77,7 @@ func NewAllowlistService(client *Client) AllowlistService {
 // Create creates an allowlist for a profile.
 func (s *allowlistService) Create(ctx context.Context, request *CreateAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.Allowlist)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.Allowlist)
 	if err != nil {
 		return fmt.Errorf("error creating request to create an allow list: %w", err)
 	}
@@ -93,7 +93,7 @@ func (s *allowlistService) Create(ctx context.Context, request *CreateAllowlistR
 // List returns the allowlist of a profile.
 func (s *allowlistService) List(ctx context.Context, request *ListAllowlistRequest) ([]*Allowlist, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the allow list: %w", err)
 	}
@@ -110,7 +110,7 @@ func (s *allowlistService) List(ctx context.Context, request *ListAllowlistReque
 // Update updates an allowlist of a profile.
 func (s *allowlistService) Update(ctx context.Context, request *UpdateAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Allowlist)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Allowlist)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the allow list id %s: %w", request.ID, err)
 	}
@@ -126,7 +126,7 @@ func (s *allowlistService) Update(ctx context.Context, request *UpdateAllowlistR
 // Delete removes an entry from the allowlist.
 func (s *allowlistService) Delete(ctx context.Context, request *DeleteAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete allow list entry %s: %w", request.ID, err)
 	}
@@ -149,7 +149,7 @@ func (s *allowlistService) Add(ctx context.Context, request *AddAllowlistRequest
 		ID:     request.ID,
 		Active: request.Active,
 	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to add allow list entry %s: %w", request.ID, err)
 	}
