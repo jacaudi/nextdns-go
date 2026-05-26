@@ -74,8 +74,10 @@ type newProfileResponse struct {
 	} `json:"data"`
 }
 
-// Profiles represents a list of NextDNS profiles.
-type Profiles struct {
+// ProfileSummary is one entry in a list-profiles response.
+//
+// Use Profile (with full details) for single-profile Get / Update calls.
+type ProfileSummary struct {
 	ID          string `json:"id"`
 	Fingerprint string `json:"fingerprint"`
 	Name        string `json:"name"`
@@ -88,18 +90,17 @@ type profileResponse struct {
 
 // profilesResponse represents the response for listing the profiles from the NextDNS API.
 type profilesResponse struct {
-	Profiles []*Profiles `json:"data"`
+	Profiles []*ProfileSummary `json:"data"`
 	Metadata struct {
 		Pagination struct {
 			Cursor string `json:"cursor"`
 		} `json:"pagination"`
 	} `json:"meta,omitempty"`
-	Errors ErrorResponse `json:"errors,omitempty"`
 }
 
 // ListProfilesResponse represents the response from listing profiles with pagination info.
 type ListProfilesResponse struct {
-	Profiles []*Profiles
+	Profiles []*ProfileSummary
 	Cursor   string // Next page cursor, empty if no more pages
 }
 
