@@ -59,8 +59,7 @@ type rewritesService struct {
 var _ RewritesService = &rewritesService{}
 
 // NewRewritesService returns a new NextDNS rewrites service.
-// nolint: revive
-func NewRewritesService(client *Client) *rewritesService {
+func NewRewritesService(client *Client) RewritesService {
 	return &rewritesService{
 		client: client,
 	}

@@ -76,8 +76,7 @@ type privacyBlocklistsService struct {
 var _ PrivacyBlocklistsService = &privacyBlocklistsService{}
 
 // NewPrivacyBlocklistsService returns a new NextDNS privacy blocklist service.
-// nolint: revive
-func NewPrivacyBlocklistsService(client *Client) *privacyBlocklistsService {
+func NewPrivacyBlocklistsService(client *Client) PrivacyBlocklistsService {
 	return &privacyBlocklistsService{
 		client: client,
 	}

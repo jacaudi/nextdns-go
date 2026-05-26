@@ -46,8 +46,7 @@ type settingsPerformanceService struct {
 var _ SettingsPerformanceService = &settingsPerformanceService{}
 
 // NewSettingsPerformanceService returns a new NextDNS settings performance service.
-// nolint: revive
-func NewSettingsPerformanceService(client *Client) *settingsPerformanceService {
+func NewSettingsPerformanceService(client *Client) SettingsPerformanceService {
 	return &settingsPerformanceService{
 		client: client,
 	}

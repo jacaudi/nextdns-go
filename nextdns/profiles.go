@@ -110,8 +110,7 @@ type profilesService struct {
 var _ ProfilesService = &profilesService{}
 
 // NewProfilesService returns a new NextDNS profiles service.
-// nolint: revive
-func NewProfilesService(client *Client) *profilesService {
+func NewProfilesService(client *Client) ProfilesService {
 	return &profilesService{
 		client: client,
 	}

@@ -71,8 +71,7 @@ type securityTldsService struct {
 var _ SecurityTldsService = &securityTldsService{}
 
 // NewSecurityTldsService returns a new NextDNS security TLDs service.
-// nolint: revive
-func NewSecurityTldsService(client *Client) *securityTldsService {
+func NewSecurityTldsService(client *Client) SecurityTldsService {
 	return &securityTldsService{
 		client: client,
 	}

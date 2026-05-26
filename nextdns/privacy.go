@@ -47,8 +47,7 @@ type privacyService struct {
 var _ PrivacyService = &privacyService{}
 
 // NewPrivacyService returns a new NextDNS privacy service.
-// nolint: revive
-func NewPrivacyService(client *Client) *privacyService {
+func NewPrivacyService(client *Client) PrivacyService {
 	return &privacyService{
 		client: client,
 	}

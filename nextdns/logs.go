@@ -109,8 +109,7 @@ type logsService struct {
 var _ LogsService = &logsService{}
 
 // NewLogsService creates a new logs service.
-// nolint: revive
-func NewLogsService(client *Client) *logsService {
+func NewLogsService(client *Client) LogsService {
 	return &logsService{
 		client: client,
 	}

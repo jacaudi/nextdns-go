@@ -68,8 +68,7 @@ type denylistService struct {
 var _ DenylistService = &denylistService{}
 
 // NewDenylistService returns a new NextDNS denylist service.
-// nolint: revive
-func NewDenylistService(client *Client) *denylistService {
+func NewDenylistService(client *Client) DenylistService {
 	return &denylistService{
 		client: client,
 	}

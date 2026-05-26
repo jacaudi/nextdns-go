@@ -71,8 +71,7 @@ type privacyNativesService struct {
 var _ PrivacyNativesService = &privacyNativesService{}
 
 // NewPrivacyNativesService returns a new NextDNS privacy native tracking protection service.
-// nolint: revive
-func NewPrivacyNativesService(client *Client) *privacyNativesService {
+func NewPrivacyNativesService(client *Client) PrivacyNativesService {
 	return &privacyNativesService{
 		client: client,
 	}

@@ -48,8 +48,7 @@ type settingsService struct {
 var _ SettingsService = &settingsService{}
 
 // NewSettingsService returns a new NextDNS settings service.
-// nolint: revive
-func NewSettingsService(client *Client) *settingsService {
+func NewSettingsService(client *Client) SettingsService {
 	return &settingsService{
 		client: client,
 	}

@@ -156,8 +156,7 @@ type analyticsService struct {
 var _ AnalyticsService = &analyticsService{}
 
 // NewAnalyticsService creates a new analytics service.
-// nolint: revive
-func NewAnalyticsService(client *Client) *analyticsService {
+func NewAnalyticsService(client *Client) AnalyticsService {
 	return &analyticsService{
 		client: client,
 	}

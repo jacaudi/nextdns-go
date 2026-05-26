@@ -68,8 +68,7 @@ type allowlistService struct {
 var _ AllowlistService = &allowlistService{}
 
 // NewAllowlistService returns a new NextDNS allowlist service.
-// nolint: revive
-func NewAllowlistService(client *Client) *allowlistService {
+func NewAllowlistService(client *Client) AllowlistService {
 	return &allowlistService{
 		client: client,
 	}

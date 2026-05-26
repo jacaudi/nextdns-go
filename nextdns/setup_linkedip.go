@@ -47,8 +47,7 @@ type setupLinkedIPService struct {
 var _ SetupLinkedIPService = &setupLinkedIPService{}
 
 // NewSetupLinkedIPService returns a new NextDNS setup linked ip service.
-// nolint: revive
-func NewSetupLinkedIPService(client *Client) *setupLinkedIPService {
+func NewSetupLinkedIPService(client *Client) SetupLinkedIPService {
 	return &setupLinkedIPService{
 		client: client,
 	}

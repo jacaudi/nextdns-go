@@ -44,8 +44,7 @@ type settingsBlockPageService struct {
 var _ SettingsBlockPageService = &settingsBlockPageService{}
 
 // NewSettingsBlockPageService returns a new NextDNS settings block page service.
-// nolint: revive
-func NewSettingsBlockPageService(client *Client) *settingsBlockPageService {
+func NewSettingsBlockPageService(client *Client) SettingsBlockPageService {
 	return &settingsBlockPageService{
 		client: client,
 	}

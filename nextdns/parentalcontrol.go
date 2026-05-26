@@ -72,8 +72,7 @@ type parentalControlService struct {
 var _ ParentalControlService = &parentalControlService{}
 
 // NewParentalControlService returns a new NextDNS parental control service.
-// nolint: revive
-func NewParentalControlService(client *Client) *parentalControlService {
+func NewParentalControlService(client *Client) ParentalControlService {
 	return &parentalControlService{
 		client: client,
 	}
