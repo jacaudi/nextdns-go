@@ -8,6 +8,7 @@ const (
 	StatusDefault LogStatus = "default"
 	StatusBlocked LogStatus = "blocked"
 	StatusAllowed LogStatus = "allowed"
+	StatusError   LogStatus = "error"
 )
 
 // String implements fmt.Stringer.

@@ -11,6 +11,7 @@ func TestLogStatusConstants(t *testing.T) {
 	c.Equal(string(StatusDefault), "default")
 	c.Equal(string(StatusBlocked), "blocked")
 	c.Equal(string(StatusAllowed), "allowed")
+	c.Equal(string(StatusError), "error")
 }
 
 func TestSortOrderConstants(t *testing.T) {
