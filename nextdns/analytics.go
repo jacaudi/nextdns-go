@@ -166,6 +166,10 @@ type AnalyticsService interface {
 	// Encryption returns counts by query encryption status.
 	GetEncryption(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsEncryptionResponse, error)
 	GetEncryptionSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsEncryptionTimeSeriesResponse, error)
+
+	// IPVersions returns counts by IP version (4 or 6).
+	GetIPVersions(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsIPVersionResponse, error)
+	GetIPVersionsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsIPVersionTimeSeriesResponse, error)
 }
 
 // AnalyticsDNSSECEntry is one row of the dnssec analytics response.
@@ -244,6 +248,46 @@ type AnalyticsEncryptionResponse struct {
 // AnalyticsEncryptionTimeSeriesResponse is the public time-series response.
 type AnalyticsEncryptionTimeSeriesResponse struct {
 	Data       []*AnalyticsEncryptionTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
+}
+
+// AnalyticsIPVersionEntry is one row of the ipVersions analytics response.
+type AnalyticsIPVersionEntry struct {
+	Version int `json:"version"`
+	Queries int `json:"queries"`
+}
+
+// AnalyticsIPVersionTimeSeriesEntry has queries as an array.
+type AnalyticsIPVersionTimeSeriesEntry struct {
+	Version int   `json:"version"`
+	Queries []int `json:"queries"`
+}
+
+type analyticsIPVersionResponse struct {
+	Data []*AnalyticsIPVersionEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsIPVersionTimeSeriesResponse struct {
+	Data []*AnalyticsIPVersionTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsIPVersionResponse is the public response.
+type AnalyticsIPVersionResponse struct {
+	Data       []*AnalyticsIPVersionEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsIPVersionTimeSeriesResponse is the public time-series response.
+type AnalyticsIPVersionTimeSeriesResponse struct {
+	Data       []*AnalyticsIPVersionTimeSeriesEntry
 	Pagination AnalyticsPagination
 	Series     AnalyticsSeriesInfo
 }
@@ -728,6 +772,51 @@ func (s *analyticsService) GetEncryptionSeries(ctx context.Context, request *Get
 	}
 
 	return &AnalyticsEncryptionTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetIPVersions returns IP-version analytics.
+func (s *analyticsService) GetIPVersions(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsIPVersionResponse, error) {
+	path := analyticsPath(request.ProfileID, "ipVersions")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ipVersions: %w", err)
+	}
+
+	response := analyticsIPVersionResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ipVersions: %w", err)
+	}
+
+	return &AnalyticsIPVersionResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetIPVersionsSeries returns IP-version analytics as a time series.
+func (s *analyticsService) GetIPVersionsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsIPVersionTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "ipVersions;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ipVersions series: %w", err)
+	}
+
+	response := analyticsIPVersionTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ipVersions series: %w", err)
+	}
+
+	return &AnalyticsIPVersionTimeSeriesResponse{
 		Data:       response.Data,
 		Pagination: response.Meta.Pagination,
 		Series:     response.Meta.Series,
