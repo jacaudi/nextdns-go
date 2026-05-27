@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -154,6 +155,19 @@ func WithLogger(logger *slog.Logger) ClientOption {
 	}
 }
 
+// WithRateLimitObserver sets a callback invoked after every HTTP response
+// with the parsed X-RateLimit-* headers. When unset, no callback is invoked.
+//
+// The callback runs on the HTTP response goroutine. Keep it cheap — consumers
+// that need heavy work should write to a channel or atomic and process
+// asynchronously.
+func WithRateLimitObserver(fn func(RateLimit)) ClientOption {
+	return func(c *Client) error {
+		c.rateLimitObserver = fn
+		return nil
+	}
+}
+
 // WithHTTPClient sets a custom HTTP client that can be used for requests.
 func WithHTTPClient(client *http.Client) ClientOption {
 	return func(c *Client) error {
@@ -245,6 +259,10 @@ func (c *Client) do(ctx context.Context, req *http.Request, v interface{}) error
 // The goal is to handle the common errors that can occur when making a request to the NextDNS API,
 // and also provide custom error responses for the client.
 func (c *Client) handleResponse(res *http.Response, v interface{}) error {
+	if c.rateLimitObserver != nil {
+		c.rateLimitObserver(parseRateLimit(res.Header))
+	}
+
 	out, err := io.ReadAll(res.Body)
 	if err != nil {
 		return err
@@ -402,4 +420,26 @@ type authTransport struct {
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("X-Api-Key", t.apiKey.Expose())
 	return t.rt.RoundTrip(req)
+}
+
+// parseRateLimit pulls X-RateLimit-* headers out of an HTTP response.
+// Missing or malformed headers leave the corresponding field zero-valued.
+func parseRateLimit(h http.Header) RateLimit {
+	rl := RateLimit{}
+	if v := h.Get("X-RateLimit-Limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			rl.Limit = n
+		}
+	}
+	if v := h.Get("X-RateLimit-Remaining"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			rl.Remaining = n
+		}
+	}
+	if v := h.Get("X-RateLimit-Reset"); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+			rl.Reset = time.Unix(n, 0).UTC()
+		}
+	}
+	return rl
 }

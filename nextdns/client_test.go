@@ -109,3 +109,47 @@ func TestWithLoggerInjectsHandler(t *testing.T) {
 	out := buf.String()
 	c.True(strings.Contains(out, "nextdns request"))
 }
+
+func TestRateLimitObserverInvoked(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Limit", "600")
+		w.Header().Set("X-RateLimit-Remaining", "597")
+		w.Header().Set("X-RateLimit-Reset", "1730000000")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"id":"abc"}}`))
+	}))
+	defer ts.Close()
+
+	var seen RateLimit
+	observer := func(rl RateLimit) { seen = rl }
+
+	client, err := New(WithBaseURL(ts.URL), WithRateLimitObserver(observer))
+	c.NoErr(err)
+
+	_, err = client.Profiles.Get(context.Background(), &GetProfileRequest{ProfileID: "abc"})
+	c.NoErr(err)
+
+	c.Equal(seen.Limit, 600)
+	c.Equal(seen.Remaining, 597)
+	c.Equal(seen.Reset.Unix(), int64(1730000000))
+}
+
+func TestRateLimitObserverUnsetNoOp(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Limit", "600")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"id":"abc"}}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	_, err = client.Profiles.Get(context.Background(), &GetProfileRequest{ProfileID: "abc"})
+	c.NoErr(err)
+	// No observer set; nothing to assert except that the call succeeds.
+}
