@@ -14,7 +14,7 @@ const analyticsAPIPath = "analytics"
 type AnalyticsOptions struct {
 	From   string // Date filter (ISO 8601, Unix timestamp, or relative like "-7d")
 	To     string // Date filter
-	Limit  int    // Results per page (1-500, default 10)
+	Limit  int    // Results per page (1-1000 per OpenAPI spec; SDK does not enforce)
 	Cursor string // Pagination cursor
 	Device string // Filter by device ID
 }

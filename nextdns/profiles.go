@@ -208,7 +208,7 @@ func (s *profilesService) Delete(ctx context.Context, request *DeleteProfileRequ
 		return fmt.Errorf("error making a request to delete the profile: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // profileAPIPath returns the profile API path.
