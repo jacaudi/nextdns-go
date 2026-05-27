@@ -103,15 +103,15 @@ type GetAnalyticsTimeSeriesRequest struct {
 type GetAnalyticsDomainsRequest struct {
 	ProfileID string
 	Options   *AnalyticsOptions
-	Status    string // Filter: "default", "blocked", "allowed"
-	Root      bool   // Aggregate by root domain
+	Status    LogStatus // Filter: "default", "blocked", "allowed"
+	Root      bool      // Aggregate by root domain
 }
 
 // GetAnalyticsDomainsTimeSeriesRequest includes domain-specific filters for time series.
 type GetAnalyticsDomainsTimeSeriesRequest struct {
 	ProfileID string
 	Options   *AnalyticsTimeSeriesOptions
-	Status    string
+	Status    LogStatus
 	Root      bool
 }
 
@@ -119,14 +119,14 @@ type GetAnalyticsDomainsTimeSeriesRequest struct {
 type GetAnalyticsDestinationsRequest struct {
 	ProfileID string
 	Options   *AnalyticsOptions
-	Type      string // Required: "countries" or "gafam"
+	Type      DestinationType // Required: "countries" or "gafam"
 }
 
 // GetAnalyticsDestinationsTimeSeriesRequest requires a type parameter.
 type GetAnalyticsDestinationsTimeSeriesRequest struct {
 	ProfileID string
 	Options   *AnalyticsTimeSeriesOptions
-	Type      string
+	Type      DestinationType
 }
 
 // AnalyticsService provides access to NextDNS analytics data.
@@ -449,7 +449,7 @@ func (s *analyticsService) GetDomains(ctx context.Context, request *GetAnalytics
 	path := analyticsPath(request.ProfileID, "domains")
 	query := buildAnalyticsQuery(request.Options)
 	if request.Status != "" {
-		query.Set("status", request.Status)
+		query.Set("status", string(request.Status))
 	}
 	if request.Root {
 		query.Set("root", "true")
@@ -477,7 +477,7 @@ func (s *analyticsService) GetDomainsSeries(ctx context.Context, request *GetAna
 	path := analyticsPath(request.ProfileID, "domains;series")
 	query := buildTimeSeriesQuery(request.Options)
 	if request.Status != "" {
-		query.Set("status", request.Status)
+		query.Set("status", string(request.Status))
 	}
 	if request.Root {
 		query.Set("root", "true")
@@ -551,7 +551,7 @@ func (s *analyticsService) GetDestinations(ctx context.Context, request *GetAnal
 	path := analyticsPath(request.ProfileID, "destinations")
 	query := buildAnalyticsQuery(request.Options)
 	if request.Type != "" {
-		query.Set("type", request.Type)
+		query.Set("type", string(request.Type))
 	}
 
 	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
@@ -576,7 +576,7 @@ func (s *analyticsService) GetDestinationsSeries(ctx context.Context, request *G
 	path := analyticsPath(request.ProfileID, "destinations;series")
 	query := buildTimeSeriesQuery(request.Options)
 	if request.Type != "" {
-		query.Set("type", request.Type)
+		query.Set("type", string(request.Type))
 	}
 
 	req, err := s.client.newRequest(http.MethodGet, path, query, nil)

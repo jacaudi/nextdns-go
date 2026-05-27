@@ -43,10 +43,10 @@ func TestLogEntryUnmarshal(t *testing.T) {
 	c.Equal(entry.Root, "example.com")
 	c.Equal(entry.Tracker, "tracker-id")
 	c.Equal(entry.Encrypted, true)
-	c.Equal(entry.Protocol, "DNS-over-HTTPS")
+	c.Equal(entry.Protocol, ProtocolDoH)
 	c.Equal(entry.ClientIP, "192.168.1.100")
 	c.Equal(entry.Client, "client-name")
-	c.Equal(entry.Status, "blocked")
+	c.Equal(entry.Status, StatusBlocked)
 	c.True(entry.Device != nil)
 	c.Equal(entry.Device.ID, "device-1")
 	c.Equal(entry.Device.Name, "iPhone")
@@ -128,7 +128,7 @@ func TestLogsGet(t *testing.T) {
 	c.NoErr(err)
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Data[0].Domain, "example.com")
-	c.Equal(resp.Data[0].Status, "default")
+	c.Equal(resp.Data[0].Status, StatusDefault)
 	c.Equal(resp.Pagination.Cursor, "next123")
 	c.Equal(resp.Stream.ID, "stream456")
 }
@@ -286,5 +286,5 @@ func TestLogsStream(t *testing.T) {
 
 	c.Equal(len(got), 2)
 	c.Equal(got[0].Domain, "example.com")
-	c.Equal(got[1].Status, "blocked")
+	c.Equal(got[1].Status, StatusBlocked)
 }

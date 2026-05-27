@@ -19,7 +19,7 @@ type SettingsLogsDrop struct {
 type SettingsLogs struct {
 	Enabled   bool              `json:"enabled"`
 	Drop      *SettingsLogsDrop `json:"drop,omitempty"`
-	Retention int               `json:"retention,omitempty"`
+	Retention LogRetention      `json:"retention,omitempty"`
 	Location  string            `json:"location,omitempty"`
 }
 

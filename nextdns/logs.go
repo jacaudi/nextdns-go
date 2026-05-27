@@ -37,25 +37,25 @@ type LogEntry struct {
 	Root      string      `json:"root"`
 	Tracker   string      `json:"tracker,omitempty"`
 	Encrypted bool        `json:"encrypted"`
-	Protocol  string      `json:"protocol"`
+	Protocol  DNSProtocol `json:"protocol"`
 	ClientIP  string      `json:"clientIp"`
 	Client    string      `json:"client,omitempty"`
 	Device    *LogDevice  `json:"device,omitempty"`
-	Status    string      `json:"status"`
+	Status    LogStatus   `json:"status"`
 	Reasons   []LogReason `json:"reasons,omitempty"`
 }
 
 // LogsQueryOptions contains parameters for querying logs.
 type LogsQueryOptions struct {
-	From   string // Date filter (ISO 8601, Unix timestamp, or relative like "-7d")
-	To     string // Date filter
-	Sort   string // "asc" or "desc" (default: "desc")
-	Limit  int    // Results per page (10-1000, default 100)
-	Cursor string // Pagination cursor
-	Device string // Filter by device ID
-	Status string // Filter: "default", "error", "blocked", "allowed"
-	Search string // Domain search (partial matching supported)
-	Raw    bool   // When true, return all DNS queries (raw=1). Default returns navigational queries (A/AAAA/HTTPS) deduplicated.
+	From   string    // Date filter (ISO 8601, Unix timestamp, or relative like "-7d")
+	To     string    // Date filter
+	Sort   SortOrder // "asc" or "desc" (default: "desc")
+	Limit  int       // Results per page (10-1000, default 100)
+	Cursor string    // Pagination cursor
+	Device string    // Filter by device ID
+	Status LogStatus // Filter: "default", "error", "blocked", "allowed"
+	Search string    // Domain search (partial matching supported)
+	Raw    bool      // When true, return all DNS queries (raw=1). Default returns navigational queries (A/AAAA/HTTPS) deduplicated.
 }
 
 // LogsPagination contains cursor for pagination.
@@ -167,7 +167,7 @@ func buildLogsQuery(opts *LogsQueryOptions) url.Values {
 		query.Set("to", opts.To)
 	}
 	if opts.Sort != "" {
-		query.Set("sort", opts.Sort)
+		query.Set("sort", string(opts.Sort))
 	}
 	if opts.Limit > 0 {
 		query.Set("limit", strconv.Itoa(opts.Limit))
@@ -179,7 +179,7 @@ func buildLogsQuery(opts *LogsQueryOptions) url.Values {
 		query.Set("device", opts.Device)
 	}
 	if opts.Status != "" {
-		query.Set("status", opts.Status)
+		query.Set("status", string(opts.Status))
 	}
 	if opts.Search != "" {
 		query.Set("search", opts.Search)
