@@ -30,10 +30,11 @@ type ListPrivacyNativesRequest struct {
 	ProfileID string
 }
 
-// AddPrivacyNativesRequest encapsulates the request for adding a single privacy native.
+// AddPrivacyNativesRequest encapsulates the request for adding a single privacy native entry.
 type AddPrivacyNativesRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
+	Active    *bool  `json:"active,omitempty"`
 }
 
 // UpdatePrivacyNativesRequest encapsulates the request for updating a privacy native.
@@ -114,12 +115,7 @@ func (s *privacyNativesService) List(ctx context.Context, request *ListPrivacyNa
 // Add adds a single native tracking protection.
 func (s *privacyNativesService) Add(ctx context.Context, request *AddPrivacyNativesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesAPIPath)
-	body := struct {
-		ID string `json:"id"`
-	}{
-		ID: request.ID,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add privacy native %s: %w", request.ID, err)
 	}

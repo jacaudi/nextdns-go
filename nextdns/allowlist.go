@@ -41,7 +41,7 @@ type DeleteAllowlistRequest struct {
 
 // AddAllowlistRequest encapsulates the request for adding a single allowlist entry.
 type AddAllowlistRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
 	Active    *bool  `json:"active,omitempty"`
 }
@@ -142,14 +142,7 @@ func (s *allowlistService) Delete(ctx context.Context, request *DeleteAllowlistR
 // Add adds a single entry to the allowlist.
 func (s *allowlistService) Add(ctx context.Context, request *AddAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
-	body := struct {
-		ID     string `json:"id"`
-		Active *bool  `json:"active,omitempty"`
-	}{
-		ID:     request.ID,
-		Active: request.Active,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add allow list entry %s: %w", request.ID, err)
 	}

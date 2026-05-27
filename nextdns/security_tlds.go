@@ -30,10 +30,11 @@ type ListSecurityTldsRequest struct {
 	ProfileID string
 }
 
-// AddSecurityTldsRequest encapsulates the request for adding a single security TLD.
+// AddSecurityTldsRequest encapsulates the request for adding a single security TLD entry.
 type AddSecurityTldsRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
+	Active    *bool  `json:"active,omitempty"`
 }
 
 // UpdateSecurityTldsRequest encapsulates the request for updating a security TLD.
@@ -114,12 +115,7 @@ func (s *securityTldsService) List(ctx context.Context, request *ListSecurityTld
 // Add adds a single TLD to the blocked list.
 func (s *securityTldsService) Add(ctx context.Context, request *AddSecurityTldsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
-	body := struct {
-		ID string `json:"id"`
-	}{
-		ID: request.ID,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add security TLD %s: %w", request.ID, err)
 	}

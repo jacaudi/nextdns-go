@@ -35,10 +35,11 @@ type ListPrivacyBlocklistsRequest struct {
 	ProfileID string
 }
 
-// AddPrivacyBlocklistsRequest encapsulates the request for adding a single privacy blocklist.
+// AddPrivacyBlocklistsRequest encapsulates the request for adding a single privacy blocklist entry.
 type AddPrivacyBlocklistsRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
+	Active    *bool  `json:"active,omitempty"`
 }
 
 // UpdatePrivacyBlocklistsRequest encapsulates the request for updating a privacy blocklist.
@@ -119,12 +120,7 @@ func (s *privacyBlocklistsService) List(ctx context.Context, request *ListPrivac
 // Add adds a single blocklist to the privacy settings.
 func (s *privacyBlocklistsService) Add(ctx context.Context, request *AddPrivacyBlocklistsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyBlocklistsAPIPath)
-	body := struct {
-		ID string `json:"id"`
-	}{
-		ID: request.ID,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add privacy blocklist %s: %w", request.ID, err)
 	}

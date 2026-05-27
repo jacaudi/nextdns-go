@@ -41,7 +41,7 @@ type DeleteDenylistRequest struct {
 
 // AddDenylistRequest encapsulates the request for adding a single denylist entry.
 type AddDenylistRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
 	Active    *bool  `json:"active,omitempty"`
 }
@@ -142,14 +142,7 @@ func (s *denylistService) Delete(ctx context.Context, request *DeleteDenylistReq
 // Add adds a single entry to the denylist.
 func (s *denylistService) Add(ctx context.Context, request *AddDenylistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistAPIPath)
-	body := struct {
-		ID     string `json:"id"`
-		Active *bool  `json:"active,omitempty"`
-	}{
-		ID:     request.ID,
-		Active: request.Active,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, nil, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add deny list entry %s: %w", request.ID, err)
 	}
