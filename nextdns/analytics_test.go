@@ -690,3 +690,47 @@ func TestAnalyticsGetIPVersionsSeries(t *testing.T) {
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Data[0].Version, 4)
 }
+
+func TestAnalyticsGetProtocols(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/protocols")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"protocol": "DNS-over-HTTPS", "queries": 5000}],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetProtocols(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Protocol, ProtocolDoH)
+}
+
+func TestAnalyticsGetProtocolsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/protocols;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"protocol": "DNS-over-HTTPS", "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetProtocolsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Protocol, ProtocolDoH)
+}

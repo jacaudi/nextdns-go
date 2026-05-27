@@ -170,6 +170,10 @@ type AnalyticsService interface {
 	// IPVersions returns counts by IP version (4 or 6).
 	GetIPVersions(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsIPVersionResponse, error)
 	GetIPVersionsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsIPVersionTimeSeriesResponse, error)
+
+	// Protocols returns counts by DNS protocol (DoH, DoT, DoQ, UDP, TCP).
+	GetProtocols(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsProtocolResponse, error)
+	GetProtocolsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsProtocolTimeSeriesResponse, error)
 }
 
 // AnalyticsDNSSECEntry is one row of the dnssec analytics response.
@@ -288,6 +292,46 @@ type AnalyticsIPVersionResponse struct {
 // AnalyticsIPVersionTimeSeriesResponse is the public time-series response.
 type AnalyticsIPVersionTimeSeriesResponse struct {
 	Data       []*AnalyticsIPVersionTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
+}
+
+// AnalyticsProtocolEntry is one row of the protocols analytics response.
+type AnalyticsProtocolEntry struct {
+	Protocol DNSProtocol `json:"protocol"`
+	Queries  int         `json:"queries"`
+}
+
+// AnalyticsProtocolTimeSeriesEntry has queries as an array.
+type AnalyticsProtocolTimeSeriesEntry struct {
+	Protocol DNSProtocol `json:"protocol"`
+	Queries  []int       `json:"queries"`
+}
+
+type analyticsProtocolResponse struct {
+	Data []*AnalyticsProtocolEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsProtocolTimeSeriesResponse struct {
+	Data []*AnalyticsProtocolTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsProtocolResponse is the public response.
+type AnalyticsProtocolResponse struct {
+	Data       []*AnalyticsProtocolEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsProtocolTimeSeriesResponse is the public time-series response.
+type AnalyticsProtocolTimeSeriesResponse struct {
+	Data       []*AnalyticsProtocolTimeSeriesEntry
 	Pagination AnalyticsPagination
 	Series     AnalyticsSeriesInfo
 }
@@ -817,6 +861,51 @@ func (s *analyticsService) GetIPVersionsSeries(ctx context.Context, request *Get
 	}
 
 	return &AnalyticsIPVersionTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetProtocols returns DNS protocol analytics.
+func (s *analyticsService) GetProtocols(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsProtocolResponse, error) {
+	path := analyticsPath(request.ProfileID, "protocols")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics protocols: %w", err)
+	}
+
+	response := analyticsProtocolResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics protocols: %w", err)
+	}
+
+	return &AnalyticsProtocolResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetProtocolsSeries returns DNS protocol analytics as a time series.
+func (s *analyticsService) GetProtocolsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsProtocolTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "protocols;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics protocols series: %w", err)
+	}
+
+	response := analyticsProtocolTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics protocols series: %w", err)
+	}
+
+	return &AnalyticsProtocolTimeSeriesResponse{
 		Data:       response.Data,
 		Pagination: response.Meta.Pagination,
 		Series:     response.Meta.Series,
