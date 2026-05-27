@@ -1,0 +1,92 @@
+// Example: query, download, and stream DNS logs.
+//
+// Run query:    NEXTDNS_API_KEY=... NEXTDNS_PROFILE_ID=abc123 go run . query
+// Run download: NEXTDNS_API_KEY=... NEXTDNS_PROFILE_ID=abc123 go run . download
+// Run stream:   NEXTDNS_API_KEY=... NEXTDNS_PROFILE_ID=abc123 go run . stream
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/jacaudi/nextdns-go/nextdns"
+)
+
+func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("usage: logs <query|download|stream>")
+	}
+	apiKey := os.Getenv("NEXTDNS_API_KEY")
+	profileID := os.Getenv("NEXTDNS_PROFILE_ID")
+	if apiKey == "" || profileID == "" {
+		log.Fatal("NEXTDNS_API_KEY and NEXTDNS_PROFILE_ID must be set")
+	}
+
+	client, err := nextdns.New(nextdns.WithAPIKey(nextdns.Secret(apiKey)))
+	if err != nil {
+		log.Fatalf("client init: %v", err)
+	}
+
+	switch os.Args[1] {
+	case "query":
+		queryLogs(client, profileID)
+	case "download":
+		downloadLogs(client, profileID)
+	case "stream":
+		streamLogs(client, profileID)
+	default:
+		log.Fatalf("unknown command %q", os.Args[1])
+	}
+}
+
+func queryLogs(client *nextdns.Client, profileID string) {
+	resp, err := client.Logs.Get(context.Background(), &nextdns.GetLogsRequest{
+		ProfileID: profileID,
+		Options:   &nextdns.LogsQueryOptions{Limit: 10, From: "-1h"},
+	})
+	if err != nil {
+		log.Fatalf("get logs: %v", err)
+	}
+	for _, e := range resp.Data {
+		fmt.Printf("%s %s %s %s\n", e.Timestamp.Format("15:04:05"), e.Status, e.Protocol, e.Domain)
+	}
+}
+
+func downloadLogs(client *nextdns.Client, profileID string) {
+	body, err := client.Logs.Download(context.Background(), &nextdns.DownloadLogsRequest{ProfileID: profileID})
+	if err != nil {
+		log.Fatalf("download logs: %v", err)
+	}
+	defer body.Close()
+
+	f, err := os.Create("logs.csv")
+	if err != nil {
+		log.Fatalf("create file: %v", err)
+	}
+	defer f.Close()
+
+	n, err := io.Copy(f, body)
+	if err != nil {
+		log.Fatalf("copy: %v", err)
+	}
+	fmt.Printf("Wrote %d bytes to logs.csv\n", n)
+}
+
+func streamLogs(client *nextdns.Client, profileID string) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	fmt.Println("Streaming logs — press Ctrl-C to stop.")
+	for entry, err := range client.Logs.Stream(ctx, &nextdns.StreamLogsRequest{ProfileID: profileID}) {
+		if err != nil {
+			fmt.Printf("stream ended: %v\n", err)
+			return
+		}
+		fmt.Printf("%s %s %s %s\n", entry.Timestamp.Format("15:04:05"), entry.Status, entry.Protocol, entry.Domain)
+	}
+}
