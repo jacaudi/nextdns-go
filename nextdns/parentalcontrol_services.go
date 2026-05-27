@@ -34,11 +34,18 @@ type ListParentalControlServicesRequest struct {
 	ProfileID string
 }
 
+// DeleteParentalControlServicesRequest encapsulates the request for deleting a parental control service entry.
+type DeleteParentalControlServicesRequest struct {
+	ProfileID string
+	ID        string
+}
+
 // ParentalControlServicesService is an interface for communicating with the NextDNS parental control services API endpoint.
 type ParentalControlServicesService interface {
 	Create(context.Context, *CreateParentalControlServicesRequest) error
 	List(context.Context, *ListParentalControlServicesRequest) ([]*ParentalControlServices, error)
 	Update(context.Context, *UpdateParentalControlServicesRequest) error
+	Delete(context.Context, *DeleteParentalControlServicesRequest) error
 }
 
 // parentalControlServicesResponse represents the NextDNS parental control services service.
@@ -105,6 +112,22 @@ func (s *parentalControlServicesService) Update(ctx context.Context, request *Up
 	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the parental control services: %w", err)
+	}
+
+	return nil
+}
+
+// Delete removes a single parental control service entry.
+func (s *parentalControlServicesService) Delete(ctx context.Context, request *DeleteParentalControlServicesRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlServicesIDAPIPath(request.ID))
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete parental control service entry %s: %w", request.ID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to delete parental control service entry %s: %w", request.ID, err)
 	}
 
 	return nil
