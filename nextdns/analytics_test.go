@@ -594,3 +594,51 @@ func TestAnalyticsGetDNSSECSeries(t *testing.T) {
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Data[0].Validated, true)
 }
+
+func TestAnalyticsGetEncryption(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/encryption")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"encrypted": true, "queries": 1500},
+				{"encrypted": false, "queries": 300}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetEncryption(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].Encrypted, true)
+	c.Equal(resp.Data[0].Queries, 1500)
+}
+
+func TestAnalyticsGetEncryptionSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/encryption;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"encrypted": true, "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetEncryptionSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Encrypted, true)
+}

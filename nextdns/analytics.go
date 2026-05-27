@@ -162,6 +162,10 @@ type AnalyticsService interface {
 	// DNSSEC returns counts by DNSSEC validation status.
 	GetDNSSEC(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsDNSSECResponse, error)
 	GetDNSSECSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsDNSSECTimeSeriesResponse, error)
+
+	// Encryption returns counts by query encryption status.
+	GetEncryption(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsEncryptionResponse, error)
+	GetEncryptionSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsEncryptionTimeSeriesResponse, error)
 }
 
 // AnalyticsDNSSECEntry is one row of the dnssec analytics response.
@@ -200,6 +204,46 @@ type AnalyticsDNSSECResponse struct {
 // AnalyticsDNSSECTimeSeriesResponse is the public time-series response.
 type AnalyticsDNSSECTimeSeriesResponse struct {
 	Data       []*AnalyticsDNSSECTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
+}
+
+// AnalyticsEncryptionEntry is one row of the encryption analytics response.
+type AnalyticsEncryptionEntry struct {
+	Encrypted bool `json:"encrypted"`
+	Queries   int  `json:"queries"`
+}
+
+// AnalyticsEncryptionTimeSeriesEntry has queries as an array.
+type AnalyticsEncryptionTimeSeriesEntry struct {
+	Encrypted bool  `json:"encrypted"`
+	Queries   []int `json:"queries"`
+}
+
+type analyticsEncryptionResponse struct {
+	Data []*AnalyticsEncryptionEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsEncryptionTimeSeriesResponse struct {
+	Data []*AnalyticsEncryptionTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsEncryptionResponse is the public response.
+type AnalyticsEncryptionResponse struct {
+	Data       []*AnalyticsEncryptionEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsEncryptionTimeSeriesResponse is the public time-series response.
+type AnalyticsEncryptionTimeSeriesResponse struct {
+	Data       []*AnalyticsEncryptionTimeSeriesEntry
 	Pagination AnalyticsPagination
 	Series     AnalyticsSeriesInfo
 }
@@ -639,6 +683,51 @@ func (s *analyticsService) GetDNSSECSeries(ctx context.Context, request *GetAnal
 	}
 
 	return &AnalyticsDNSSECTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetEncryption returns query encryption analytics.
+func (s *analyticsService) GetEncryption(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsEncryptionResponse, error) {
+	path := analyticsPath(request.ProfileID, "encryption")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics encryption: %w", err)
+	}
+
+	response := analyticsEncryptionResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics encryption: %w", err)
+	}
+
+	return &AnalyticsEncryptionResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetEncryptionSeries returns query encryption analytics as a time series.
+func (s *analyticsService) GetEncryptionSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsEncryptionTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "encryption;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics encryption series: %w", err)
+	}
+
+	response := analyticsEncryptionTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics encryption series: %w", err)
+	}
+
+	return &AnalyticsEncryptionTimeSeriesResponse{
 		Data:       response.Data,
 		Pagination: response.Meta.Pagination,
 		Series:     response.Meta.Series,
