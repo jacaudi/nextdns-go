@@ -476,3 +476,73 @@ func TestAnalyticsGetReasonsSeries(t *testing.T) {
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Series.Interval, 3600)
 }
+
+func TestAnalyticsGetIPs(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ips")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "192.0.2.1", "queries": 1000}],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetIPs(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].ID, "192.0.2.1")
+}
+
+func TestAnalyticsGetIPsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ips;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "192.0.2.1", "queries": [50, 100]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetIPsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Series.Interval, 3600)
+}
+
+func TestAnalyticsGetIPsWithLimit(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ips")
+		c.Equal(r.URL.Query().Get("limit"), "50")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{"cursor":""}}}`))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	_, err := client.Analytics.GetIPs(context.Background(), &GetAnalyticsRequest{
+		ProfileID: "abc123",
+		Options:   &AnalyticsOptions{Limit: 50},
+	})
+	c.NoErr(err)
+}

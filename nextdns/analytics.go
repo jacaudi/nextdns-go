@@ -154,6 +154,10 @@ type AnalyticsService interface {
 	// Reasons returns counts by block reason (e.g. blocklist name).
 	GetReasons(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
 	GetReasonsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// IPs returns counts by client IP.
+	GetIPs(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetIPsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
 }
 
 type analyticsService struct {
@@ -498,6 +502,51 @@ func (s *analyticsService) GetReasonsSeries(ctx context.Context, request *GetAna
 	err = s.client.do(ctx, req, &response)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to get analytics reasons series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetIPs returns counts by client IP.
+func (s *analyticsService) GetIPs(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	path := analyticsPath(request.ProfileID, "ips")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ips: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ips: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetIPsSeries returns counts by client IP as a time series.
+func (s *analyticsService) GetIPsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "ips;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ips series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ips series: %w", err)
 	}
 
 	return &AnalyticsTimeSeriesResponse{
