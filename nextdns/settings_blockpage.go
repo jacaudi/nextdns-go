@@ -75,8 +75,7 @@ func (s *settingsBlockPageService) Update(ctx context.Context, request *UpdateSe
 		return fmt.Errorf("error creating request to update the block page settings: %w", err)
 	}
 
-	response := settingsBlockPageResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the block page settings: %w", err)
 	}

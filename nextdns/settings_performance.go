@@ -77,8 +77,7 @@ func (s *settingsPerformanceService) Update(ctx context.Context, request *Update
 		return fmt.Errorf("error creating request to update the performance settings: %w", err)
 	}
 
-	response := settingsPerformanceResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the performance settings: %w", err)
 	}

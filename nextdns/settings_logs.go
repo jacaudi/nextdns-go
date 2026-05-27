@@ -84,8 +84,7 @@ func (s *settingsLogsService) Update(ctx context.Context, request *UpdateSetting
 		return fmt.Errorf("error creating request to update the logs settings: %w", err)
 	}
 
-	response := settingsLogsResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the logs settings: %w", err)
 	}
