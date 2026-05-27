@@ -1,6 +1,6 @@
 # nextdns-go
 
-Go client library for [NextDNS](https://nextdns.io/) API.
+Go client library for the [NextDNS](https://nextdns.io/) API.
 
 ## Install
 
@@ -10,22 +10,10 @@ go get github.com/jacaudi/nextdns-go/nextdns
 
 ## Requirements
 
-An API Key is required to interact with the NextDNS API.
-You can find your API Key in the [NextDNS account](https://my.nextdns.io/account) page.
+- Go 1.23+
+- A NextDNS API key from https://my.nextdns.io/account
 
-## API
-
-The [official API documentation](https://nextdns.github.io/api/) was the base document for this package.
-
-APIs supported by this package:
-
-- [x] Profile (`/profiles` and `/profiles/:profile`)
-- [ ] Analytics (`/profiles/:profile/analytics`)
-- [ ] Logs (`/profiles/:profile/logs`)
-
-## Usage
-
-Here is an example usage of the NextAPI Go client for the `/profiles` endpoint:
+## Quick Start
 
 ```go
 package main
@@ -33,151 +21,64 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/jacaudi/nextdns-go/nextdns"
 )
 
 func main() {
-	// get the api key from the environment
-	key := os.Getenv("NEXTDNS_API_KEY")
-
-	// client client with a custom API key
-	ctx := context.Background()
-	client, _ := nextdns.New(
-		nextdns.WithAPIKey(key),
+	client, err := nextdns.New(
+		nextdns.WithAPIKey(nextdns.Secret(os.Getenv("NEXTDNS_API_KEY"))),
 	)
-
-	// set a few settings like the name and some other attributes
-	create := &nextdns.CreateProfileRequest{
-		Name: "nextdns-go",
-		Denylist: []*nextdns.Denylist{
-			{
-				ID:     "google.com",
-				Active: true,
-			},
-			{
-				ID:     "bing.com",
-				Active: true,
-			},
-		},
-		Allowlist: []*nextdns.Allowlist{
-			{
-				ID:     "duckduckgo.com",
-				Active: true,
-			},
-			{
-				ID:     "search.brave.com",
-				Active: false,
-			},
-		},
-		ParentalControl: &nextdns.ParentalControl{
-			Categories: []*nextdns.ParentalControlCategories{
-				{
-					ID:     "gambling",
-					Active: true,
-				},
-			},
-		},
-		Security: &nextdns.Security{
-			AiThreatDetection: true,
-		},
-		Settings: &nextdns.Settings{
-			Logs: &nextdns.SettingsLogs{
-				Enabled: true,
-			},
-			Web3: true,
-		},
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// create a new profile
-	id, _ := client.Profiles.Create(ctx, create)
-
-	// set a few settings like the name and some other attributes
-	update := &nextdns.UpdateProfileRequest{
-		ProfileID: id,
-		Profile: &nextdns.Profile{
-			Name: "nextdns-go-updated",
-			Settings: &nextdns.Settings{
-				Logs: &nextdns.SettingsLogs{
-					Enabled: false,
-				},
-			},
-		},
-	}
-
-	// update the profile
-	_ = client.Profiles.Update(ctx, update)
-
-	// get the profile details to check the settings
-	profile, _ := client.Profiles.Get(ctx, &nextdns.GetProfileRequest{
-		ProfileID: id,
-	})
-	fmt.Printf("%q profile name: %s\n", id, profile.Name)
-	fmt.Printf("%q logs status: %t\n", id, profile.Settings.Logs.Enabled)
-
-	// list all the profiles
-	profiles, _ := client.Profiles.List(ctx, &nextdns.ListProfileRequest{})
-	fmt.Printf("Found %d profiles\n", len(profiles))
-	for _, p := range profiles {
-		fmt.Printf("ID: %q\n", p.ID)
-		fmt.Printf("Name: %q\n", p.Name)
-	}
-
-	// delete the profile
-	_ = client.Profiles.Delete(ctx, &nextdns.DeleteProfileRequest{
-		ProfileID: id,
-	})
-}
-```
-
-It's also possible to update directly the API child endpoints, like the `/profiles/:profile/denylist` endpoint:
-
-```go
-package main
-
-import (
-	"context"
-	"fmt"
-	"os"
-
-	"github.com/jacaudi/nextdns-go/nextdns"
-)
-
-func main() {
-	// get the api key from the environment
-	key := os.Getenv("NEXTDNS_API_KEY")
-
-	// client client with a custom API key
 	ctx := context.Background()
-	client, _ := nextdns.New(
-		nextdns.WithAPIKey(key),
-	)
-
-	// set the profile id
-	id := "abc123"
-
-	// set the request to update the denylist
-	request := &nextdns.UpdateDenylistRequest{
-		ProfileID: id,
-		ID:      "google.com",
-		Denylist: &nextdns.Denylist{
-			Active: true,
-		},
+	profiles, err := client.Profiles.List(ctx, &nextdns.ListProfileRequest{})
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// update the denylist
-	_ = client.Denylist.Update(ctx, request)
-
-	// list all the denylist entries
-	list, _ := client.Denylist.Get(ctx, &nextdns.GetDenylistRequest{ProfileID: id})
-	for _, p := range list {
-		fmt.Printf("ID: %q\n", p.ID)
-		fmt.Printf("Status: %t\n", p.Active)
+	for _, p := range profiles.Profiles {
+		fmt.Printf("%s — %s\n", p.ID, p.Name)
 	}
 }
 ```
 
-## Credits
+## API Coverage
 
-This project is based on the original work by Alexandre Malucelli at [amalucelli/nextdns-go](https://github.com/amalucelli/nextdns-go). The repository was forked and is now maintained independently with ongoing development and enhancements.
+| Area | Status |
+|---|---|
+| Profiles | ✅ list, get, create, update, delete |
+| Settings | ✅ (incl. logs, block page, performance) |
+| Security | ✅ (incl. TLDs) |
+| Privacy | ✅ (incl. blocklists, natives) |
+| Parental Control | ✅ (incl. services, categories) |
+| Allowlist / Denylist | ✅ |
+| Rewrites | ✅ |
+| Setup / Setup Linked IP | ✅ |
+| Analytics | ✅ all 9 endpoint families (status, domains, queryTypes, reasons, ips, dnssec, encryption, ipVersions, protocols, destinations, devices) plus all `;series` variants |
+| Logs | ✅ get, clear, download, downloadURL, stream (SSE) |
+
+## Examples
+
+Each feature has a runnable example in [`examples/`](./examples/):
+
+- [`examples/profiles/`](./examples/profiles/) — list, create, update, delete a profile
+- [`examples/denylist/`](./examples/denylist/) — manage a profile's denylist
+- [`examples/analytics/`](./examples/analytics/) — query analytics and time series
+- [`examples/logs/`](./examples/logs/) — query, download, and stream DNS logs
+
+## Migration from v0.x
+
+See [`MIGRATING.md`](./MIGRATING.md) for the v0.x → v1.0.0 migration guide.
+
+## Workflow & Release Process
+
+See [`WORKFLOW.md`](./WORKFLOW.md).
+
+## License
+
+MIT — see [`LICENSE.md`](./LICENSE.md).
