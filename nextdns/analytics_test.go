@@ -424,3 +424,55 @@ func TestAnalyticsGetQueryTypesSeries(t *testing.T) {
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Series.Interval, 3600)
 }
+
+func TestAnalyticsGetReasons(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/reasons")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "blocklist:nextdns-recommended", "queries": 5000}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetReasons(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].ID, "blocklist:nextdns-recommended")
+}
+
+func TestAnalyticsGetReasonsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/reasons;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "blocklist:nextdns-recommended", "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetReasonsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Series.Interval, 3600)
+}

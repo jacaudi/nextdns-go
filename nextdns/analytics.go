@@ -150,6 +150,10 @@ type AnalyticsService interface {
 	// QueryTypes returns counts by DNS query type (A, AAAA, etc.).
 	GetQueryTypes(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
 	GetQueryTypesSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// Reasons returns counts by block reason (e.g. blocklist name).
+	GetReasons(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetReasonsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
 }
 
 type analyticsService struct {
@@ -449,6 +453,51 @@ func (s *analyticsService) GetQueryTypesSeries(ctx context.Context, request *Get
 	err = s.client.do(ctx, req, &response)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to get analytics queryTypes series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetReasons returns counts by block reason.
+func (s *analyticsService) GetReasons(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	path := analyticsPath(request.ProfileID, "reasons")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics reasons: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics reasons: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetReasonsSeries returns counts by block reason as a time series.
+func (s *analyticsService) GetReasonsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "reasons;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics reasons series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics reasons series: %w", err)
 	}
 
 	return &AnalyticsTimeSeriesResponse{
