@@ -141,7 +141,7 @@ func TestLogsGetWithOptions(t *testing.T) {
 		c.Equal(r.URL.Query().Get("status"), "blocked")
 		c.Equal(r.URL.Query().Get("limit"), "50")
 		c.Equal(r.URL.Query().Get("search"), "example")
-		c.Equal(r.URL.Query().Get("raw"), "true")
+		c.Equal(r.URL.Query().Get("raw"), "1")
 
 		w.WriteHeader(http.StatusOK)
 		resp := `{"data": [], "meta": {"pagination": {"cursor": ""}, "stream": {"id": ""}}}`

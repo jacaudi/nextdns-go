@@ -50,7 +50,7 @@ type LogsQueryOptions struct {
 	Device string // Filter by device ID
 	Status string // Filter: "default", "error", "blocked", "allowed"
 	Search string // Domain search (partial matching supported)
-	Raw    bool   // Show all queries vs. cleaned navigational only
+	Raw    bool   // When true, return all DNS queries (raw=1). Default returns navigational queries (A/AAAA/HTTPS) deduplicated.
 }
 
 // LogsPagination contains cursor for pagination.
@@ -146,7 +146,7 @@ func buildLogsQuery(opts *LogsQueryOptions) url.Values {
 		query.Set("search", opts.Search)
 	}
 	if opts.Raw {
-		query.Set("raw", "true")
+		query.Set("raw", "1")
 	}
 	return query
 }
