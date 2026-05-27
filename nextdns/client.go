@@ -7,8 +7,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -92,12 +92,25 @@ type Client struct {
 	// Services for Logs.
 	Logs LogsService
 
-	// Debug mode for the HTTP requests.
-	Debug bool
+	// Optional debug logger; when set, the SDK logs requests and responses
+	// at slog.LevelDebug.
+	debugLogger *slog.Logger
+
+	// Optional rate-limit observer; lands in Task A9.
+	rateLimitObserver func(RateLimit)
 }
 
 // ClientOption is a function that can be used to customize the client.
 type ClientOption func(c *Client) error
+
+// RateLimit holds the rate-limit headers returned by the NextDNS API on each
+// response. Reset is the absolute time at which the current limit window
+// resets (parsed from the X-RateLimit-Reset Unix timestamp).
+type RateLimit struct {
+	Limit     int
+	Remaining int
+	Reset     time.Time
+}
 
 // WithBaseURL sets the base URL of the NextDNS API.
 func WithBaseURL(baseURL string) ClientOption {
@@ -129,10 +142,14 @@ func WithAPIKey(apiKey Secret) ClientOption {
 	}
 }
 
-// WithDebug enables debug mode.
-func WithDebug() ClientOption {
+// WithLogger sets a slog.Logger used by the SDK to emit request/response
+// debug records at slog.LevelDebug. When unset, the SDK emits nothing.
+//
+// Per go-standards.md §7: library code does not log at Info or above. The
+// logger is consulted at Debug only; consumers decide whether to enable.
+func WithLogger(logger *slog.Logger) ClientOption {
 	return func(c *Client) error {
-		c.Debug = true
+		c.debugLogger = logger
 		return nil
 	}
 }
@@ -233,12 +250,10 @@ func (c *Client) handleResponse(res *http.Response, v interface{}) error {
 		return err
 	}
 
-	if c.Debug {
-		if string(out) == "" {
-			fmt.Printf("[DEBUG] RESPONSE: StatusCode:%d\n", res.StatusCode)
-		} else {
-			fmt.Printf("[DEBUG] RESPONSE: StatusCode:%d, Body:%v\n", res.StatusCode, string(out))
-		}
+	if c.debugLogger != nil {
+		c.debugLogger.Debug("nextdns response",
+			"status", res.StatusCode,
+			"body", string(out))
 	}
 
 	// If there is no response body, then we don't need to do anything.
@@ -339,21 +354,28 @@ func (c *Client) newRequest(method string, path string, query url.Values, body i
 		u.RawQuery = query.Encode()
 	}
 
-	var bodyReader io.Reader
+	var (
+		bodyReader io.Reader
+		bodyBuf    *bytes.Buffer // captured for debug; nil if no body
+	)
 	if body != nil && method != http.MethodGet {
-		buf := new(bytes.Buffer)
-		if err := json.NewEncoder(buf).Encode(body); err != nil {
+		bodyBuf = new(bytes.Buffer)
+		if err := json.NewEncoder(bodyBuf).Encode(body); err != nil {
 			return nil, err
 		}
-		bodyReader = buf
+		bodyReader = bodyBuf
 	}
 
-	if c.Debug {
-		if bodyReader == nil {
-			fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s\n", method, u.String())
+	if c.debugLogger != nil {
+		if bodyBuf == nil {
+			c.debugLogger.Debug("nextdns request",
+				"method", method,
+				"url", u.String())
 		} else {
-			buf := bodyReader.(*bytes.Buffer)
-			fmt.Printf("[DEBUG] REQUEST: Method:%s, URL:%s, Body:%s\n", method, u.String(), strings.TrimSuffix(buf.String(), "\n"))
+			c.debugLogger.Debug("nextdns request",
+				"method", method,
+				"url", u.String(),
+				"body", strings.TrimSuffix(bodyBuf.String(), "\n"))
 		}
 	}
 

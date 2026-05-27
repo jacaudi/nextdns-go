@@ -61,7 +61,7 @@ func TestSetupLinkedIpUpdate(t *testing.T) {
 		c.NoErr(err)
 	}))
 
-	client, err := New(WithBaseURL(ts.URL), WithDebug())
+	client, err := New(WithBaseURL(ts.URL))
 	c.NoErr(err)
 
 	ctx := context.Background()

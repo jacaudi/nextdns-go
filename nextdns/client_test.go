@@ -1,9 +1,14 @@
 package nextdns
 
 import (
+	"bytes"
+	"context"
 	"crypto/tls"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
@@ -81,4 +86,26 @@ func TestNewRequestUnifiedWithQuery(t *testing.T) {
 	req, err := client.newRequest(http.MethodGet, "profiles/abc/analytics/status", q, nil)
 	c.NoErr(err)
 	c.Equal(req.URL.String(), "https://api.nextdns.io/profiles/abc/analytics/status?from=-7d")
+}
+
+func TestWithLoggerInjectsHandler(t *testing.T) {
+	c := is.New(t)
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"id":"abc"}}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL), WithLogger(logger))
+	c.NoErr(err)
+
+	_, err = client.Profiles.Get(context.Background(), &GetProfileRequest{ProfileID: "abc"})
+	c.NoErr(err)
+
+	out := buf.String()
+	c.True(strings.Contains(out, "nextdns request"))
 }
