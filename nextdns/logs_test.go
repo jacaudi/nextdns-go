@@ -244,3 +244,47 @@ func TestLogsDownloadURL(t *testing.T) {
 	c.NoErr(err)
 	c.Equal(resp.URL, "https://files.nextdns.io/abc.csv")
 }
+
+func TestLogsStream(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/logs/stream")
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		// Two SSE events.
+		_, _ = w.Write([]byte("id: 64v32d9r6rwkcctg6cu38e9g60\n"))
+		_, _ = w.Write([]byte(`data: {"timestamp":"2024-01-01T00:00:00Z","domain":"example.com","root":"example.com","encrypted":true,"protocol":"DNS-over-HTTPS","clientIp":"203.0.113.1","status":"default"}`))
+		_, _ = w.Write([]byte("\n\n"))
+		flusher.Flush()
+
+		_, _ = w.Write([]byte("id: 64v32d9r6rwkcctg6cu38e9g61\n"))
+		_, _ = w.Write([]byte(`data: {"timestamp":"2024-01-01T00:00:01Z","domain":"test.com","root":"test.com","encrypted":true,"protocol":"DNS-over-HTTPS","clientIp":"203.0.113.1","status":"blocked"}`))
+		_, _ = w.Write([]byte("\n\n"))
+		flusher.Flush()
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var got []*LogEntry
+	for entry, err := range client.Logs.Stream(ctx, &StreamLogsRequest{ProfileID: "abc123"}) {
+		if err != nil {
+			break // EOF
+		}
+		got = append(got, entry)
+		if len(got) == 2 {
+			break
+		}
+	}
+
+	c.Equal(len(got), 2)
+	c.Equal(got[0].Domain, "example.com")
+	c.Equal(got[1].Status, "blocked")
+}

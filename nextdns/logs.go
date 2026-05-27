@@ -1,12 +1,16 @@
 package nextdns
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -103,6 +107,13 @@ type DownloadLogsURLResponse struct {
 	URL string `json:"url"`
 }
 
+// StreamLogsRequest encapsulates a request to /logs/stream.
+type StreamLogsRequest struct {
+	ProfileID string
+	Device    string // optional device filter
+	LastID    string // optional; resume from this SSE event id
+}
+
 // LogsService provides access to NextDNS query logs.
 type LogsService interface {
 	// Get queries DNS query logs with filtering and pagination.
@@ -119,6 +130,14 @@ type LogsService interface {
 	// without following the redirect. Useful for showing a loader while the
 	// file is being generated.
 	DownloadURL(ctx context.Context, request *DownloadLogsRequest) (*DownloadLogsURLResponse, error)
+
+	// Stream consumes the /logs/stream SSE endpoint as an iterator.
+	// Iteration ends when ctx is cancelled or the connection drops.
+	// The last yielded pair carries err != nil to signal end of stream.
+	//
+	// Caller controls reconnect: track the last event ID and pass it
+	// via StreamLogsRequest.LastID on the next call.
+	Stream(ctx context.Context, request *StreamLogsRequest) iter.Seq2[*LogEntry, error]
 }
 
 type logsService struct {
@@ -255,4 +274,86 @@ func (s *logsService) DownloadURL(ctx context.Context, request *DownloadLogsRequ
 	}
 
 	return &response, nil
+}
+
+// Stream consumes the SSE event stream from /logs/stream.
+func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) iter.Seq2[*LogEntry, error] {
+	return func(yield func(*LogEntry, error) bool) {
+		path := fmt.Sprintf("%s/stream", logsPath(request.ProfileID))
+		query := url.Values{}
+		if request.Device != "" {
+			query.Set("device", request.Device)
+		}
+		if request.LastID != "" {
+			query.Set("id", request.LastID)
+		}
+
+		req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+		if err != nil {
+			yield(nil, fmt.Errorf("error creating request to stream logs: %w", err))
+			return
+		}
+		req = req.WithContext(ctx)
+		req.Header.Set("Accept", "text/event-stream")
+
+		// SSE connections are long-lived; do NOT use the default Client.Timeout
+		// (30s, set in defaultHTTPClient). We need a copy of the *http.Client
+		// without the overall timeout.
+		streamClient := *s.client.client
+		streamClient.Timeout = 0
+
+		res, err := streamClient.Do(req)
+		if err != nil {
+			yield(nil, fmt.Errorf("error opening logs stream: %w", err))
+			return
+		}
+		defer func() { _ = res.Body.Close() }()
+
+		if res.StatusCode != http.StatusOK {
+			yield(nil, fmt.Errorf("logs stream: unexpected status %d", res.StatusCode))
+			return
+		}
+
+		scanner := bufio.NewScanner(res.Body)
+		// SSE event bodies can be large; raise the buffer ceiling.
+		buf := make([]byte, 0, 64*1024)
+		scanner.Buffer(buf, 1024*1024)
+
+		var dataPayload strings.Builder
+
+		for scanner.Scan() {
+			if ctx.Err() != nil {
+				yield(nil, ctx.Err())
+				return
+			}
+			line := scanner.Text()
+			switch {
+			case strings.HasPrefix(line, "data: "):
+				if dataPayload.Len() > 0 {
+					dataPayload.WriteString("\n")
+				}
+				dataPayload.WriteString(strings.TrimPrefix(line, "data: "))
+			case line == "":
+				// Event boundary — emit if we have a payload.
+				if dataPayload.Len() == 0 {
+					continue
+				}
+				entry := &LogEntry{}
+				if err := json.Unmarshal([]byte(dataPayload.String()), entry); err != nil {
+					if !yield(nil, fmt.Errorf("error decoding stream event: %w", err)) {
+						return
+					}
+				} else if !yield(entry, nil) {
+					return
+				}
+				dataPayload.Reset()
+			default:
+				// id: lines or comments — currently ignored. (Future: track LastID.)
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			yield(nil, fmt.Errorf("logs stream read error: %w", err))
+		}
+	}
 }
