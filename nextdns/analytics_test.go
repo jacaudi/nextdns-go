@@ -546,3 +546,51 @@ func TestAnalyticsGetIPsWithLimit(t *testing.T) {
 	})
 	c.NoErr(err)
 }
+
+func TestAnalyticsGetDNSSEC(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/dnssec")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"validated": true, "queries": 1000},
+				{"validated": false, "queries": 200}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetDNSSEC(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].Validated, true)
+	c.Equal(resp.Data[0].Queries, 1000)
+}
+
+func TestAnalyticsGetDNSSECSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/dnssec;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"validated": true, "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetDNSSECSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Validated, true)
+}

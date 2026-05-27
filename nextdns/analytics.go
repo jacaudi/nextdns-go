@@ -158,6 +158,50 @@ type AnalyticsService interface {
 	// IPs returns counts by client IP.
 	GetIPs(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
 	GetIPsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// DNSSEC returns counts by DNSSEC validation status.
+	GetDNSSEC(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsDNSSECResponse, error)
+	GetDNSSECSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsDNSSECTimeSeriesResponse, error)
+}
+
+// AnalyticsDNSSECEntry is one row of the dnssec analytics response.
+type AnalyticsDNSSECEntry struct {
+	Validated bool `json:"validated"`
+	Queries   int  `json:"queries"`
+}
+
+// AnalyticsDNSSECTimeSeriesEntry has queries as an array.
+type AnalyticsDNSSECTimeSeriesEntry struct {
+	Validated bool  `json:"validated"`
+	Queries   []int `json:"queries"`
+}
+
+type analyticsDNSSECResponse struct {
+	Data []*AnalyticsDNSSECEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsDNSSECTimeSeriesResponse struct {
+	Data []*AnalyticsDNSSECTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsDNSSECResponse is the public response.
+type AnalyticsDNSSECResponse struct {
+	Data       []*AnalyticsDNSSECEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsDNSSECTimeSeriesResponse is the public time-series response.
+type AnalyticsDNSSECTimeSeriesResponse struct {
+	Data       []*AnalyticsDNSSECTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
 }
 
 type analyticsService struct {
@@ -550,6 +594,51 @@ func (s *analyticsService) GetIPsSeries(ctx context.Context, request *GetAnalyti
 	}
 
 	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetDNSSEC returns DNSSEC validation analytics.
+func (s *analyticsService) GetDNSSEC(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsDNSSECResponse, error) {
+	path := analyticsPath(request.ProfileID, "dnssec")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics dnssec: %w", err)
+	}
+
+	response := analyticsDNSSECResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics dnssec: %w", err)
+	}
+
+	return &AnalyticsDNSSECResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetDNSSECSeries returns DNSSEC validation analytics as a time series.
+func (s *analyticsService) GetDNSSECSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsDNSSECTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "dnssec;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics dnssec series: %w", err)
+	}
+
+	response := analyticsDNSSECTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics dnssec series: %w", err)
+	}
+
+	return &AnalyticsDNSSECTimeSeriesResponse{
 		Data:       response.Data,
 		Pagination: response.Meta.Pagination,
 		Series:     response.Meta.Series,
