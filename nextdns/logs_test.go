@@ -3,8 +3,10 @@ package nextdns
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
@@ -191,4 +193,54 @@ func TestLogsClear(t *testing.T) {
 	})
 
 	c.NoErr(err)
+}
+
+func TestLogsDownload(t *testing.T) {
+	c := is.New(t)
+
+	// File server simulating the redirect target.
+	fileTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("timestamp,domain\n2024-01-01T00:00:00Z,example.com\n"))
+	}))
+	defer fileTS.Close()
+
+	// API server returning a 302 to the file server.
+	apiTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/logs/download")
+		http.Redirect(w, r, fileTS.URL+"/file.csv", http.StatusFound)
+	}))
+	defer apiTS.Close()
+
+	client, err := New(WithBaseURL(apiTS.URL))
+	c.NoErr(err)
+
+	body, err := client.Logs.Download(context.Background(), &DownloadLogsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	defer func() { _ = body.Close() }()
+
+	data, err := io.ReadAll(body)
+	c.NoErr(err)
+	c.True(strings.Contains(string(data), "example.com"))
+}
+
+func TestLogsDownloadURL(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/logs/download")
+		c.Equal(r.URL.Query().Get("redirect"), "0")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"url": "https://files.nextdns.io/abc.csv"}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Logs.DownloadURL(context.Background(), &DownloadLogsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(resp.URL, "https://files.nextdns.io/abc.csv")
 }

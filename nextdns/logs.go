@@ -3,6 +3,7 @@ package nextdns
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -92,6 +93,16 @@ type ClearLogsRequest struct {
 	ProfileID string
 }
 
+// DownloadLogsRequest encapsulates a request to /logs/download.
+type DownloadLogsRequest struct {
+	ProfileID string
+}
+
+// DownloadLogsURLResponse holds the URL returned when downloading via redirect=0.
+type DownloadLogsURLResponse struct {
+	URL string `json:"url"`
+}
+
 // LogsService provides access to NextDNS query logs.
 type LogsService interface {
 	// Get queries DNS query logs with filtering and pagination.
@@ -99,6 +110,15 @@ type LogsService interface {
 
 	// Clear deletes all logs for a profile.
 	Clear(ctx context.Context, request *ClearLogsRequest) error
+
+	// Download follows the 302 to fetch the CSV log archive. Caller owns
+	// the returned ReadCloser and must Close() it.
+	Download(ctx context.Context, request *DownloadLogsRequest) (io.ReadCloser, error)
+
+	// DownloadURL returns the URL where the CSV log archive can be fetched,
+	// without following the redirect. Useful for showing a loader while the
+	// file is being generated.
+	DownloadURL(ctx context.Context, request *DownloadLogsRequest) (*DownloadLogsURLResponse, error)
 }
 
 type logsService struct {
@@ -193,4 +213,46 @@ func (s *logsService) Clear(ctx context.Context, request *ClearLogsRequest) erro
 	}
 
 	return nil
+}
+
+// Download fetches the CSV log archive, following the 302 redirect.
+// Caller MUST Close() the returned ReadCloser.
+func (s *logsService) Download(ctx context.Context, request *DownloadLogsRequest) (io.ReadCloser, error) {
+	path := fmt.Sprintf("%s/download", logsPath(request.ProfileID))
+
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to download logs: %w", err)
+	}
+	req = req.WithContext(ctx)
+
+	res, err := s.client.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to download logs: %w", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		_ = res.Body.Close()
+		return nil, fmt.Errorf("logs download: unexpected status %d", res.StatusCode)
+	}
+	return res.Body, nil
+}
+
+// DownloadURL returns the public URL where the CSV log archive can be fetched.
+func (s *logsService) DownloadURL(ctx context.Context, request *DownloadLogsRequest) (*DownloadLogsURLResponse, error) {
+	path := fmt.Sprintf("%s/download", logsPath(request.ProfileID))
+	query := url.Values{}
+	query.Set("redirect", "0")
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get logs download URL: %w", err)
+	}
+
+	response := DownloadLogsURLResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get logs download URL: %w", err)
+	}
+
+	return &response, nil
 }
