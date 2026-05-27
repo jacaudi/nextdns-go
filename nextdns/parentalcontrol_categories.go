@@ -102,8 +102,7 @@ func (s *parentalControlCategoriesService) Update(ctx context.Context, request *
 		return fmt.Errorf("error creating request to update the parental control categories: %w", err)
 	}
 
-	response := parentalControlCategoriesResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the parental control categories: %w", err)
 	}

@@ -78,8 +78,7 @@ func (s *privacyService) Update(ctx context.Context, request *UpdatePrivacyReque
 		return fmt.Errorf("error creating request to update the privacy: %w", err)
 	}
 
-	response := privacyResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the privacy: %w", err)
 	}

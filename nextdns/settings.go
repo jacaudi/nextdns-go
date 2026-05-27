@@ -79,8 +79,7 @@ func (s *settingsService) Update(ctx context.Context, request *UpdateSettingsReq
 		return fmt.Errorf("error creating request to update the settings: %w", err)
 	}
 
-	response := settingsResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the settings: %w", err)
 	}
