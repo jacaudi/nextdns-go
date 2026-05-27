@@ -59,7 +59,7 @@ func main() {
 | Allowlist / Denylist | ✅ |
 | Rewrites | ✅ |
 | Setup / Setup Linked IP | ✅ |
-| Analytics | ✅ all 9 endpoint families (status, domains, queryTypes, reasons, ips, dnssec, encryption, ipVersions, protocols, destinations, devices) plus all `;series` variants |
+| Analytics | ✅ all 11 endpoint families (status, domains, queryTypes, reasons, ips, dnssec, encryption, ipVersions, protocols, destinations, devices) plus all `;series` variants |
 | Logs | ✅ get, clear, download, downloadURL, stream (SSE) |
 
 ## Examples
