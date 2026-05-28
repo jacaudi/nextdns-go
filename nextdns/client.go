@@ -491,7 +491,12 @@ func (c *Client) newRequest(method string, path string, query url.Values, body i
 		return nil, err
 	}
 
-	if bodyReader != nil {
+	if method != http.MethodGet {
+		// Every non-GET advertises JSON content even when the body is empty.
+		// Old code did this implicitly by passing an empty *bytes.Buffer to
+		// http.NewRequest; the unified helper now passes nil, so we set the
+		// header explicitly. Some strict gateways validate Content-Type even
+		// on DELETE.
 		req.Header.Set("Content-Type", contentType)
 	}
 	req.Header.Set("Accept", contentType)

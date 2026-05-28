@@ -411,3 +411,21 @@ func TestDefaultHTTPClientHonorsProxyEnv(t *testing.T) {
 	c.Equal(got, want)
 }
 
+func TestDeleteSendsContentType(t *testing.T) {
+	c := is.New(t)
+
+	var seenCT string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenCT = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	err = client.Profiles.Delete(context.Background(), &DeleteProfileRequest{ProfileID: "abc"})
+	c.NoErr(err)
+	c.Equal(seenCT, "application/json")
+}
+
