@@ -3,8 +3,11 @@ package nextdns
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/matryer/is"
@@ -41,10 +44,10 @@ func TestLogEntryUnmarshal(t *testing.T) {
 	c.Equal(entry.Root, "example.com")
 	c.Equal(entry.Tracker, "tracker-id")
 	c.Equal(entry.Encrypted, true)
-	c.Equal(entry.Protocol, "DNS-over-HTTPS")
+	c.Equal(entry.Protocol, ProtocolDoH)
 	c.Equal(entry.ClientIP, "192.168.1.100")
 	c.Equal(entry.Client, "client-name")
-	c.Equal(entry.Status, "blocked")
+	c.Equal(entry.Status, StatusBlocked)
 	c.True(entry.Device != nil)
 	c.Equal(entry.Device.ID, "device-1")
 	c.Equal(entry.Device.Name, "iPhone")
@@ -126,7 +129,7 @@ func TestLogsGet(t *testing.T) {
 	c.NoErr(err)
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Data[0].Domain, "example.com")
-	c.Equal(resp.Data[0].Status, "default")
+	c.Equal(resp.Data[0].Status, StatusDefault)
 	c.Equal(resp.Pagination.Cursor, "next123")
 	c.Equal(resp.Stream.ID, "stream456")
 }
@@ -141,7 +144,7 @@ func TestLogsGetWithOptions(t *testing.T) {
 		c.Equal(r.URL.Query().Get("status"), "blocked")
 		c.Equal(r.URL.Query().Get("limit"), "50")
 		c.Equal(r.URL.Query().Get("search"), "example")
-		c.Equal(r.URL.Query().Get("raw"), "true")
+		c.Equal(r.URL.Query().Get("raw"), "1")
 
 		w.WriteHeader(http.StatusOK)
 		resp := `{"data": [], "meta": {"pagination": {"cursor": ""}, "stream": {"id": ""}}}`
@@ -191,4 +194,268 @@ func TestLogsClear(t *testing.T) {
 	})
 
 	c.NoErr(err)
+}
+
+func TestLogsDownload(t *testing.T) {
+	c := is.New(t)
+
+	// File server simulating the redirect target.
+	fileTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/csv")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("timestamp,domain\n2024-01-01T00:00:00Z,example.com\n"))
+	}))
+	defer fileTS.Close()
+
+	// API server returning a 302 to the file server.
+	apiTS := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/logs/download")
+		http.Redirect(w, r, fileTS.URL+"/file.csv", http.StatusFound)
+	}))
+	defer apiTS.Close()
+
+	client, err := New(WithBaseURL(apiTS.URL))
+	c.NoErr(err)
+
+	body, err := client.Logs.Download(context.Background(), &DownloadLogsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	defer func() { _ = body.Close() }()
+
+	data, err := io.ReadAll(body)
+	c.NoErr(err)
+	c.True(strings.Contains(string(data), "example.com"))
+}
+
+func TestLogsDownloadURL(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/logs/download")
+		c.Equal(r.URL.Query().Get("redirect"), "0")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"url": "https://files.nextdns.io/abc.csv"}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Logs.DownloadURL(context.Background(), &DownloadLogsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(resp.URL, "https://files.nextdns.io/abc.csv")
+}
+
+func TestLogsStream(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/logs/stream")
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		// Two SSE events.
+		_, _ = w.Write([]byte("id: 64v32d9r6rwkcctg6cu38e9g60\n"))
+		_, _ = w.Write([]byte(`data: {"timestamp":"2024-01-01T00:00:00Z","domain":"example.com","root":"example.com","encrypted":true,"protocol":"DNS-over-HTTPS","clientIp":"203.0.113.1","status":"default"}`))
+		_, _ = w.Write([]byte("\n\n"))
+		flusher.Flush()
+
+		_, _ = w.Write([]byte("id: 64v32d9r6rwkcctg6cu38e9g61\n"))
+		_, _ = w.Write([]byte(`data: {"timestamp":"2024-01-01T00:00:01Z","domain":"test.com","root":"test.com","encrypted":true,"protocol":"DNS-over-HTTPS","clientIp":"203.0.113.1","status":"blocked"}`))
+		_, _ = w.Write([]byte("\n\n"))
+		flusher.Flush()
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var got []*LogEntry
+	for entry, err := range client.Logs.Stream(ctx, &StreamLogsRequest{ProfileID: "abc123"}) {
+		if err != nil {
+			break // EOF
+		}
+		got = append(got, entry)
+		if len(got) == 2 {
+			break
+		}
+	}
+
+	c.Equal(len(got), 2)
+	c.Equal(got[0].Domain, "example.com")
+	c.Equal(got[1].Status, StatusBlocked)
+}
+
+func TestLogsDownloadInvokesRateLimitObserver(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Limit", "600")
+		w.Header().Set("X-RateLimit-Remaining", "599")
+		w.Header().Set("X-RateLimit-Reset", "1730000000")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("timestamp,domain\n"))
+	}))
+	defer ts.Close()
+
+	var seen RateLimit
+	client, err := New(
+		WithBaseURL(ts.URL),
+		WithRateLimitObserver(func(rl RateLimit) { seen = rl }),
+	)
+	c.NoErr(err)
+
+	body, err := client.Logs.Download(context.Background(), &DownloadLogsRequest{ProfileID: "abc"})
+	c.NoErr(err)
+	defer func() { _ = body.Close() }()
+	_, _ = io.ReadAll(body)
+
+	c.Equal(seen.Limit, 600)
+	c.Equal(seen.Remaining, 599)
+}
+
+func TestLogsDownloadReturnsTypedErrorOn429(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"rate_limited"}]}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	_, err = client.Logs.Download(context.Background(), &DownloadLogsRequest{ProfileID: "abc"})
+	c.True(err != nil)
+
+	var apiErr *Error
+	c.True(errors.As(err, &apiErr)) // typed; not a bare fmt.Errorf
+}
+
+func TestLogsStreamAcceptsNoSpaceDataVariant(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		// "data:" with NO space — spec-compliant per HTML5 §9.2.6.
+		_, _ = w.Write([]byte(`data:{"domain":"example.com","status":"default"}`))
+		_, _ = w.Write([]byte("\n\n"))
+		flusher.Flush()
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	var got []*LogEntry
+	for entry, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		if err != nil {
+			break
+		}
+		got = append(got, entry)
+		if len(got) == 1 {
+			break
+		}
+	}
+
+	c.Equal(len(got), 1)
+	c.Equal(got[0].Domain, "example.com")
+}
+
+func TestLogsStreamExposesEventID(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		_, _ = w.Write([]byte("id: evt-001\ndata: {\"domain\":\"a.com\"}\n\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte("id: evt-002\ndata: {\"domain\":\"b.com\"}\n\n"))
+		flusher.Flush()
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	var got []*LogEntry
+	for entry, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		if err != nil {
+			break
+		}
+		got = append(got, entry)
+		if len(got) == 2 {
+			break
+		}
+	}
+
+	c.Equal(got[0].ID, "evt-001")
+	c.Equal(got[1].ID, "evt-002")
+}
+
+func TestLogsStreamYieldsEOFOnCleanEnd(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		_, _ = w.Write([]byte("data: {\"domain\":\"x.com\"}\n\n"))
+		flusher.Flush()
+		// Handler returns — server closes the connection cleanly.
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	var lastErr error
+	for _, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		if err != nil {
+			lastErr = err
+			break
+		}
+	}
+
+	c.True(errors.Is(lastErr, io.EOF))
+}
+
+func TestLogsStreamObserverFiresOn429(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"rate_limited"}]}`))
+	}))
+	defer ts.Close()
+
+	var seen RateLimit
+	client, err := New(
+		WithBaseURL(ts.URL),
+		WithRateLimitObserver(func(rl RateLimit) { seen = rl }),
+	)
+	c.NoErr(err)
+
+	var streamErr error
+	for _, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		streamErr = err
+		break
+	}
+
+	c.Equal(seen.Remaining, 0)
+
+	var apiErr *Error
+	c.True(errors.As(streamErr, &apiErr))
 }

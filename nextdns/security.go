@@ -56,8 +56,7 @@ type securityService struct {
 var _ SecurityService = &securityService{}
 
 // NewSecurityService returns a new NextDNS security service.
-// nolint: revive
-func NewSecurityService(client *Client) *securityService {
+func NewSecurityService(client *Client) SecurityService {
 	return &securityService{
 		client: client,
 	}
@@ -66,7 +65,7 @@ func NewSecurityService(client *Client) *securityService {
 // Get returns the security settings of a profile.
 func (s *securityService) Get(ctx context.Context, request *GetSecurityRequest) (*Security, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the security settings: %w", err)
 	}
@@ -83,13 +82,12 @@ func (s *securityService) Get(ctx context.Context, request *GetSecurityRequest) 
 // Update updates the security settings of a profile.
 func (s *securityService) Update(ctx context.Context, request *UpdateSecurityRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Security)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Security)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the security settings: %w", err)
 	}
 
-	response := securityResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the security settings: %w", err)
 	}

@@ -41,7 +41,7 @@ type DeleteDenylistRequest struct {
 
 // AddDenylistRequest encapsulates the request for adding a single denylist entry.
 type AddDenylistRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
 	Active    *bool  `json:"active,omitempty"`
 }
@@ -68,8 +68,7 @@ type denylistService struct {
 var _ DenylistService = &denylistService{}
 
 // NewDenylistService returns a new NextDNS denylist service.
-// nolint: revive
-func NewDenylistService(client *Client) *denylistService {
+func NewDenylistService(client *Client) DenylistService {
 	return &denylistService{
 		client: client,
 	}
@@ -78,7 +77,7 @@ func NewDenylistService(client *Client) *denylistService {
 // Create creates a denylist for a profile.
 func (s *denylistService) Create(ctx context.Context, request *CreateDenylistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.Denylist)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.Denylist)
 	if err != nil {
 		return fmt.Errorf("error creating request to create an deny list: %w", err)
 	}
@@ -94,7 +93,7 @@ func (s *denylistService) Create(ctx context.Context, request *CreateDenylistReq
 // List returns the denylist of a profile.
 func (s *denylistService) List(ctx context.Context, request *ListDenylistRequest) ([]*Denylist, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the deny list: %w", err)
 	}
@@ -111,7 +110,7 @@ func (s *denylistService) List(ctx context.Context, request *ListDenylistRequest
 // Update updates a denylist of a profile.
 func (s *denylistService) Update(ctx context.Context, request *UpdateDenylistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Denylist)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Denylist)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the deny list id %s: %w", request.ID, err)
 	}
@@ -127,7 +126,7 @@ func (s *denylistService) Update(ctx context.Context, request *UpdateDenylistReq
 // Delete removes an entry from the denylist.
 func (s *denylistService) Delete(ctx context.Context, request *DeleteDenylistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete deny list entry %s: %w", request.ID, err)
 	}
@@ -143,14 +142,7 @@ func (s *denylistService) Delete(ctx context.Context, request *DeleteDenylistReq
 // Add adds a single entry to the denylist.
 func (s *denylistService) Add(ctx context.Context, request *AddDenylistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), denylistAPIPath)
-	body := struct {
-		ID     string `json:"id"`
-		Active *bool  `json:"active,omitempty"`
-	}{
-		ID:     request.ID,
-		Active: request.Active,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add deny list entry %s: %w", request.ID, err)
 	}

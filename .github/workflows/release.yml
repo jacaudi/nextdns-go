@@ -30,6 +30,24 @@ jobs:
       coverage: true
       go-version: 'stable'
 
+  examples:
+    # Build each example/<name>/ — they're independent Go modules with
+    # `replace` directives, so the main test job does not cover them.
+    if: "!startsWith(github.ref, 'refs/tags/v')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+      - name: Build examples
+        run: |
+          for dir in examples/*/; do
+            echo "Building $dir"
+            (cd "$dir" && go build ./...)
+          done
+
   # Automatic semantic versioning from Conventional Commits + GoReleaser build
   # Creates version tags and releases automatically based on commit messages:
   # - feat: ... → minor version bump (v1.1.0)
@@ -37,7 +55,7 @@ jobs:
   # - feat!: ... → major version bump (v2.0.0) [native breaking change support]
   # GoReleaser runs as a hook after semantic-release creates the tag
   release:
-    needs: [lint, test]
+    needs: [lint, test, examples]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: jacaudi/github-actions/.github/workflows/semantic-release.yml@v0.14.1
     with:

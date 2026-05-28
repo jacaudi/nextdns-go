@@ -2,6 +2,7 @@ package nextdns
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -26,6 +27,22 @@ type CreateProfileRequest struct {
 type UpdateProfileRequest struct {
 	ProfileID string
 	Profile   *Profile
+}
+
+// MarshalJSON ensures Profile.ID (populated by Get) does not leak into the
+// PATCH body. The HTTP path already carries the profile id via ProfileID;
+// including it again in the body widens the API contract in a way the v0
+// SDK never produced.
+func (r *UpdateProfileRequest) MarshalJSON() ([]byte, error) {
+	if r.Profile == nil {
+		return []byte("null"), nil
+	}
+	clone := *r.Profile
+	clone.ID = ""
+	// type alias to avoid recursive MarshalJSON (Profile has no custom one,
+	// but the alias trick is the idiomatic guard).
+	type profileAlias Profile
+	return json.Marshal((*profileAlias)(&clone))
 }
 
 // GetProfileRequest encapsulates the request for getting a profile.
@@ -54,6 +71,7 @@ type ProfilesService interface {
 
 // Profile represents a NextDNS profile.
 type Profile struct {
+	ID              string           `json:"id,omitempty"`
 	Name            string           `json:"name,omitempty"`
 	Fingerprint     string           `json:"fingerprint,omitempty"`
 	Security        *Security        `json:"security,omitempty"`
@@ -73,8 +91,10 @@ type newProfileResponse struct {
 	} `json:"data"`
 }
 
-// Profiles represents a list of NextDNS profiles.
-type Profiles struct {
+// ProfileSummary is one entry in a list-profiles response.
+//
+// Use Profile (with full details) for single-profile Get / Update calls.
+type ProfileSummary struct {
 	ID          string `json:"id"`
 	Fingerprint string `json:"fingerprint"`
 	Name        string `json:"name"`
@@ -87,18 +107,17 @@ type profileResponse struct {
 
 // profilesResponse represents the response for listing the profiles from the NextDNS API.
 type profilesResponse struct {
-	Profiles []*Profiles `json:"data"`
+	Profiles []*ProfileSummary `json:"data"`
 	Metadata struct {
 		Pagination struct {
 			Cursor string `json:"cursor"`
 		} `json:"pagination"`
 	} `json:"meta,omitempty"`
-	Errors ErrorResponse `json:"errors,omitempty"`
 }
 
 // ListProfilesResponse represents the response from listing profiles with pagination info.
 type ListProfilesResponse struct {
-	Profiles []*Profiles
+	Profiles []*ProfileSummary
 	Cursor   string // Next page cursor, empty if no more pages
 }
 
@@ -110,8 +129,7 @@ type profilesService struct {
 var _ ProfilesService = &profilesService{}
 
 // NewProfilesService returns a new NextDNS profiles service.
-// nolint: revive
-func NewProfilesService(client *Client) *profilesService {
+func NewProfilesService(client *Client) ProfilesService {
 	return &profilesService{
 		client: client,
 	}
@@ -125,9 +143,9 @@ func (s *profilesService) List(ctx context.Context, request *ListProfileRequest)
 	if request != nil && request.Cursor != "" {
 		query := url.Values{}
 		query.Set("cursor", request.Cursor)
-		req, err = s.client.newRequestWithQuery(http.MethodGet, profilesAPIPath, query, nil)
+		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, query, nil)
 	} else {
-		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, nil)
+		req, err = s.client.newRequest(http.MethodGet, profilesAPIPath, nil, nil)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the profiles: %w", err)
@@ -147,7 +165,7 @@ func (s *profilesService) List(ctx context.Context, request *ListProfileRequest)
 
 // Create creates a profile and returns a profile ID.
 func (s *profilesService) Create(ctx context.Context, request *CreateProfileRequest) (string, error) {
-	req, err := s.client.newRequest(http.MethodPost, profilesAPIPath, request)
+	req, err := s.client.newRequest(http.MethodPost, profilesAPIPath, nil, request)
 	if err != nil {
 		return "", fmt.Errorf("error creating request to create a profile: %w", err)
 	}
@@ -164,13 +182,12 @@ func (s *profilesService) Create(ctx context.Context, request *CreateProfileRequ
 // Update updates the settings of a profile.
 func (s *profilesService) Update(ctx context.Context, request *UpdateProfileRequest) error {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Profile)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the profile: %w", err)
 	}
 
-	response := profileResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the profile: %w", err)
 	}
@@ -181,7 +198,7 @@ func (s *profilesService) Update(ctx context.Context, request *UpdateProfileRequ
 // Get returns a profile.
 func (s *profilesService) Get(ctx context.Context, request *GetProfileRequest) (*Profile, error) {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the profile: %w", err)
 	}
@@ -198,7 +215,7 @@ func (s *profilesService) Get(ctx context.Context, request *GetProfileRequest) (
 // Delete deletes a profile.
 func (s *profilesService) Delete(ctx context.Context, request *DeleteProfileRequest) error {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete the profile: %w", err)
 	}
@@ -208,7 +225,7 @@ func (s *profilesService) Delete(ctx context.Context, request *DeleteProfileRequ
 		return fmt.Errorf("error making a request to delete the profile: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // profileAPIPath returns the profile API path.

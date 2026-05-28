@@ -371,3 +371,366 @@ func TestAnalyticsGetDestinationsSeries(t *testing.T) {
 	c.Equal(len(resp.Data), 1)
 	c.Equal(resp.Data[0].Name, "Google")
 }
+
+func TestAnalyticsGetQueryTypes(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/queryTypes")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "A", "queries": 5000},
+				{"id": "AAAA", "queries": 3000}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetQueryTypes(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].ID, "A")
+}
+
+func TestAnalyticsGetQueryTypesSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/queryTypes;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "A", "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetQueryTypesSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Series.Interval, 3600)
+}
+
+func TestAnalyticsGetReasons(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/reasons")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"id": "blocklist:nextdns-recommended", "queries": 5000}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetReasons(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].ID, "blocklist:nextdns-recommended")
+}
+
+func TestAnalyticsGetReasonsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/reasons;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "blocklist:nextdns-recommended", "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetReasonsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Series.Interval, 3600)
+}
+
+func TestAnalyticsGetIPs(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ips")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "192.0.2.1", "queries": 1000}],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetIPs(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].ID, "192.0.2.1")
+}
+
+func TestAnalyticsGetIPsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ips;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"id": "192.0.2.1", "queries": [50, 100]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	resp, err := client.Analytics.GetIPsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Series.Interval, 3600)
+}
+
+func TestAnalyticsGetIPsWithLimit(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ips")
+		c.Equal(r.URL.Query().Get("limit"), "50")
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":[],"meta":{"pagination":{"cursor":""}}}`))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	_, err := client.Analytics.GetIPs(context.Background(), &GetAnalyticsRequest{
+		ProfileID: "abc123",
+		Options:   &AnalyticsOptions{Limit: 50},
+	})
+	c.NoErr(err)
+}
+
+func TestAnalyticsGetDNSSEC(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/dnssec")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"validated": true, "queries": 1000},
+				{"validated": false, "queries": 200}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetDNSSEC(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].Validated, true)
+	c.Equal(resp.Data[0].Queries, 1000)
+}
+
+func TestAnalyticsGetDNSSECSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/dnssec;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"validated": true, "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetDNSSECSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Validated, true)
+}
+
+func TestAnalyticsGetEncryption(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/encryption")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"encrypted": true, "queries": 1500},
+				{"encrypted": false, "queries": 300}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetEncryption(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].Encrypted, true)
+	c.Equal(resp.Data[0].Queries, 1500)
+}
+
+func TestAnalyticsGetEncryptionSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/encryption;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"encrypted": true, "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetEncryptionSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Encrypted, true)
+}
+
+func TestAnalyticsGetIPVersions(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ipVersions")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [
+				{"version": 4, "queries": 1200},
+				{"version": 6, "queries": 400}
+			],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetIPVersions(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 2)
+	c.Equal(resp.Data[0].Version, 4)
+	c.Equal(resp.Data[0].Queries, 1200)
+}
+
+func TestAnalyticsGetIPVersionsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/ipVersions;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"version": 4, "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetIPVersionsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Version, 4)
+}
+
+func TestAnalyticsGetProtocols(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/protocols")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"protocol": "DNS-over-HTTPS", "queries": 5000}],
+			"meta": {"pagination": {"cursor": ""}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetProtocols(context.Background(), &GetAnalyticsRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Protocol, ProtocolDoH)
+}
+
+func TestAnalyticsGetProtocolsSeries(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.URL.Path, "/profiles/abc123/analytics/protocols;series")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{
+			"data": [{"protocol": "DNS-over-HTTPS", "queries": [100, 200]}],
+			"meta": {"pagination": {"cursor": ""}, "series": {"times": [], "interval": 3600}}
+		}`
+		_, _ = w.Write([]byte(resp))
+	}))
+	defer ts.Close()
+
+	client, _ := New(WithBaseURL(ts.URL))
+	resp, err := client.Analytics.GetProtocolsSeries(context.Background(), &GetAnalyticsTimeSeriesRequest{ProfileID: "abc123"})
+	c.NoErr(err)
+	c.Equal(len(resp.Data), 1)
+	c.Equal(resp.Data[0].Protocol, ProtocolDoH)
+}

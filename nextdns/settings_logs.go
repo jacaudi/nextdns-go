@@ -19,7 +19,7 @@ type SettingsLogsDrop struct {
 type SettingsLogs struct {
 	Enabled   bool              `json:"enabled"`
 	Drop      *SettingsLogsDrop `json:"drop,omitempty"`
-	Retention int               `json:"retention,omitempty"`
+	Retention LogRetention      `json:"retention,omitempty"`
 	Location  string            `json:"location,omitempty"`
 }
 
@@ -53,8 +53,7 @@ type settingsLogsService struct {
 var _ SettingsLogsService = &settingsLogsService{}
 
 // NewSettingsLogsService returns a new NextDNS settings logs service.
-// nolint: revive
-func NewSettingsLogsService(client *Client) *settingsLogsService {
+func NewSettingsLogsService(client *Client) SettingsLogsService {
 	return &settingsLogsService{
 		client: client,
 	}
@@ -63,7 +62,7 @@ func NewSettingsLogsService(client *Client) *settingsLogsService {
 // Get returns the settings logs of a profile.
 func (s *settingsLogsService) Get(ctx context.Context, request *GetSettingsLogsRequest) (*SettingsLogs, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsLogsAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the logs settings: %w", err)
 	}
@@ -80,13 +79,12 @@ func (s *settingsLogsService) Get(ctx context.Context, request *GetSettingsLogsR
 // Update updates the settings logs of a profile.
 func (s *settingsLogsService) Update(ctx context.Context, request *UpdateSettingsLogsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsLogsAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.SettingsLogs)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.SettingsLogs)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the logs settings: %w", err)
 	}
 
-	response := settingsLogsResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the logs settings: %w", err)
 	}

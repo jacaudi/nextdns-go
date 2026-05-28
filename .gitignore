@@ -26,5 +26,8 @@ dist/
 # Plans documentation
 /docs/plans/**/*
 
+# Handoff prompts
+/docs/prompts/**/*
+
 # Git worktrees
 .worktrees/

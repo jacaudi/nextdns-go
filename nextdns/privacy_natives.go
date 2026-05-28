@@ -30,10 +30,11 @@ type ListPrivacyNativesRequest struct {
 	ProfileID string
 }
 
-// AddPrivacyNativesRequest encapsulates the request for adding a single privacy native.
+// AddPrivacyNativesRequest encapsulates the request for adding a single privacy native entry.
 type AddPrivacyNativesRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
+	Active    *bool  `json:"active,omitempty"`
 }
 
 // UpdatePrivacyNativesRequest encapsulates the request for updating a privacy native.
@@ -71,8 +72,7 @@ type privacyNativesService struct {
 var _ PrivacyNativesService = &privacyNativesService{}
 
 // NewPrivacyNativesService returns a new NextDNS privacy native tracking protection service.
-// nolint: revive
-func NewPrivacyNativesService(client *Client) *privacyNativesService {
+func NewPrivacyNativesService(client *Client) PrivacyNativesService {
 	return &privacyNativesService{
 		client: client,
 	}
@@ -81,7 +81,7 @@ func NewPrivacyNativesService(client *Client) *privacyNativesService {
 // Create creates a privacy native tracking protection list.
 func (s *privacyNativesService) Create(ctx context.Context, request *CreatePrivacyNativesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.PrivacyNatives)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.PrivacyNatives)
 	if err != nil {
 		return fmt.Errorf("error creating request to create a privacy native list: %w", err)
 	}
@@ -98,7 +98,7 @@ func (s *privacyNativesService) Create(ctx context.Context, request *CreatePriva
 // List returns the privacy native tracking protection list.
 func (s *privacyNativesService) List(ctx context.Context, request *ListPrivacyNativesRequest) ([]*PrivacyNatives, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the privacy native list: %w", err)
 	}
@@ -115,12 +115,7 @@ func (s *privacyNativesService) List(ctx context.Context, request *ListPrivacyNa
 // Add adds a single native tracking protection.
 func (s *privacyNativesService) Add(ctx context.Context, request *AddPrivacyNativesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesAPIPath)
-	body := struct {
-		ID string `json:"id"`
-	}{
-		ID: request.ID,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add privacy native %s: %w", request.ID, err)
 	}
@@ -141,7 +136,7 @@ func (s *privacyNativesService) Update(ctx context.Context, request *UpdatePriva
 	}{
 		Active: request.Active,
 	}
-	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to update privacy native %s: %w", request.NativeID, err)
 	}
@@ -157,7 +152,7 @@ func (s *privacyNativesService) Update(ctx context.Context, request *UpdatePriva
 // Delete removes a single native tracking protection.
 func (s *privacyNativesService) Delete(ctx context.Context, request *DeletePrivacyNativesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), privacyNativesIDAPIPath(request.NativeID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete privacy native %s: %w", request.NativeID, err)
 	}

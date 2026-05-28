@@ -34,11 +34,18 @@ type ListParentalControlCategoriesRequest struct {
 	ProfileID string
 }
 
+// DeleteParentalControlCategoriesRequest encapsulates the request for deleting a parental control category entry.
+type DeleteParentalControlCategoriesRequest struct {
+	ProfileID string
+	ID        string
+}
+
 // ParentalControlCategoriesService is an interface for communicating with the NextDNS parental control categories API endpoint.
 type ParentalControlCategoriesService interface {
 	Create(context.Context, *CreateParentalControlCategoriesRequest) error
 	List(context.Context, *ListParentalControlCategoriesRequest) ([]*ParentalControlCategories, error)
 	Update(context.Context, *UpdateParentalControlCategoriesRequest) error
+	Delete(context.Context, *DeleteParentalControlCategoriesRequest) error
 }
 
 // parentalControlCategoriesResponse represents the parental control categories response.
@@ -54,8 +61,7 @@ type parentalControlCategoriesService struct {
 var _ ParentalControlCategoriesService = &parentalControlCategoriesService{}
 
 // NewParentalControlCategoriesService returns a new NextDNS parental control categories service.
-// nolint: revive
-func NewParentalControlCategoriesService(client *Client) *parentalControlCategoriesService {
+func NewParentalControlCategoriesService(client *Client) ParentalControlCategoriesService {
 	return &parentalControlCategoriesService{
 		client: client,
 	}
@@ -64,7 +70,7 @@ func NewParentalControlCategoriesService(client *Client) *parentalControlCategor
 // Create creates a parental control categories list.
 func (s *parentalControlCategoriesService) Create(ctx context.Context, request *CreateParentalControlCategoriesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlCategoriesAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.ParentalControlCategories)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.ParentalControlCategories)
 	if err != nil {
 		return fmt.Errorf("error creating request to create a parental control categories: %w", err)
 	}
@@ -81,7 +87,7 @@ func (s *parentalControlCategoriesService) Create(ctx context.Context, request *
 // List returns a parental control categories list.
 func (s *parentalControlCategoriesService) List(ctx context.Context, request *ListParentalControlCategoriesRequest) ([]*ParentalControlCategories, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlCategoriesAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the parental control categories: %w", err)
 	}
@@ -98,15 +104,30 @@ func (s *parentalControlCategoriesService) List(ctx context.Context, request *Li
 // Update updates a parental control categories list.
 func (s *parentalControlCategoriesService) Update(ctx context.Context, request *UpdateParentalControlCategoriesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlCategoriesIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodPatch, path, request.ParentalControlCategories)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.ParentalControlCategories)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the parental control categories: %w", err)
 	}
 
-	response := parentalControlCategoriesResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the parental control categories: %w", err)
+	}
+
+	return nil
+}
+
+// Delete removes a single parental control category entry.
+func (s *parentalControlCategoriesService) Delete(ctx context.Context, request *DeleteParentalControlCategoriesRequest) error {
+	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlCategoriesIDAPIPath(request.ID))
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
+	if err != nil {
+		return fmt.Errorf("error creating request to delete parental control category entry %s: %w", request.ID, err)
+	}
+
+	err = s.client.do(ctx, req, nil)
+	if err != nil {
+		return fmt.Errorf("error making request to delete parental control category entry %s: %w", request.ID, err)
 	}
 
 	return nil

@@ -30,10 +30,11 @@ type ListSecurityTldsRequest struct {
 	ProfileID string
 }
 
-// AddSecurityTldsRequest encapsulates the request for adding a single security TLD.
+// AddSecurityTldsRequest encapsulates the request for adding a single security TLD entry.
 type AddSecurityTldsRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
+	Active    *bool  `json:"active,omitempty"`
 }
 
 // UpdateSecurityTldsRequest encapsulates the request for updating a security TLD.
@@ -71,8 +72,7 @@ type securityTldsService struct {
 var _ SecurityTldsService = &securityTldsService{}
 
 // NewSecurityTldsService returns a new NextDNS security TLDs service.
-// nolint: revive
-func NewSecurityTldsService(client *Client) *securityTldsService {
+func NewSecurityTldsService(client *Client) SecurityTldsService {
 	return &securityTldsService{
 		client: client,
 	}
@@ -81,7 +81,7 @@ func NewSecurityTldsService(client *Client) *securityTldsService {
 // Create creates a security TLDs list.
 func (s *securityTldsService) Create(ctx context.Context, request *CreateSecurityTldsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.SecurityTlds)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.SecurityTlds)
 	if err != nil {
 		return fmt.Errorf("error creating request to create a security tlds list: %w", err)
 	}
@@ -98,7 +98,7 @@ func (s *securityTldsService) Create(ctx context.Context, request *CreateSecurit
 // List returns a security TLDs list.
 func (s *securityTldsService) List(ctx context.Context, request *ListSecurityTldsRequest) ([]*SecurityTlds, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the security tlds list: %w", err)
 	}
@@ -115,12 +115,7 @@ func (s *securityTldsService) List(ctx context.Context, request *ListSecurityTld
 // Add adds a single TLD to the blocked list.
 func (s *securityTldsService) Add(ctx context.Context, request *AddSecurityTldsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsAPIPath)
-	body := struct {
-		ID string `json:"id"`
-	}{
-		ID: request.ID,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add security TLD %s: %w", request.ID, err)
 	}
@@ -141,7 +136,7 @@ func (s *securityTldsService) Update(ctx context.Context, request *UpdateSecurit
 	}{
 		Active: request.Active,
 	}
-	req, err := s.client.newRequest(http.MethodPatch, path, body)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, body)
 	if err != nil {
 		return fmt.Errorf("error creating request to update security TLD %s: %w", request.TldID, err)
 	}
@@ -157,7 +152,7 @@ func (s *securityTldsService) Update(ctx context.Context, request *UpdateSecurit
 // Delete removes a single TLD from the blocked list.
 func (s *securityTldsService) Delete(ctx context.Context, request *DeleteSecurityTldsRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), securityTldsIDAPIPath(request.TldID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete security TLD %s: %w", request.TldID, err)
 	}

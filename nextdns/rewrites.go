@@ -59,8 +59,7 @@ type rewritesService struct {
 var _ RewritesService = &rewritesService{}
 
 // NewRewritesService returns a new NextDNS rewrites service.
-// nolint: revive
-func NewRewritesService(client *Client) *rewritesService {
+func NewRewritesService(client *Client) RewritesService {
 	return &rewritesService{
 		client: client,
 	}
@@ -70,7 +69,7 @@ func NewRewritesService(client *Client) *rewritesService {
 func (s *rewritesService) Create(ctx context.Context, request *CreateRewritesRequest) (string, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), rewritesAPIPath)
 
-	req, err := s.client.newRequest(http.MethodPost, path, request.Rewrites)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request.Rewrites)
 	if err != nil {
 		return "", fmt.Errorf("error creating request to create a rewrite: %w", err)
 	}
@@ -87,7 +86,7 @@ func (s *rewritesService) Create(ctx context.Context, request *CreateRewritesReq
 // List returns the rewrites of a profile.
 func (s *rewritesService) List(ctx context.Context, request *ListRewritesRequest) ([]*Rewrites, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), rewritesAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the rewrite list: %w", err)
 	}
@@ -104,7 +103,7 @@ func (s *rewritesService) List(ctx context.Context, request *ListRewritesRequest
 // Delete deletes a profile.
 func (s *rewritesService) Delete(ctx context.Context, request *DeleteRewritesRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), rewritesIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete the rewrite: %w", err)
 	}

@@ -2,6 +2,8 @@ package nextdns
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -114,4 +116,57 @@ func TestProfilesListNilRequest(t *testing.T) {
 	c.NoErr(err)
 	c.Equal(len(response.Profiles), 0)
 	c.Equal(response.Cursor, "")
+}
+
+func TestProfilesGetReturnsID(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Method, "GET")
+		c.Equal(r.URL.Path, "/profiles/abc123")
+
+		w.WriteHeader(http.StatusOK)
+		resp := `{"data": {"id": "abc123", "name": "My Profile", "fingerprint": "fp04d207c439ee4858"}}`
+		_, err := w.Write([]byte(resp))
+		c.NoErr(err)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	ctx := context.Background()
+	profile, err := client.Profiles.Get(ctx, &GetProfileRequest{ProfileID: "abc123"})
+
+	c.NoErr(err)
+	c.Equal(profile.ID, "abc123")
+	c.Equal(profile.Name, "My Profile")
+}
+
+func TestProfilesUpdateOmitsIDFromBody(t *testing.T) {
+	c := is.New(t)
+
+	var bodyKeys map[string]any
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &bodyKeys)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	// Get-mutate-Update pattern: ID is populated from a previous Get.
+	err = client.Profiles.Update(context.Background(), &UpdateProfileRequest{
+		ProfileID: "abc",
+		Profile: &Profile{
+			ID:   "abc", // populated by Get
+			Name: "new",
+		},
+	})
+	c.NoErr(err)
+
+	_, hasID := bodyKeys["id"]
+	c.True(!hasID) // body must NOT contain "id"
 }

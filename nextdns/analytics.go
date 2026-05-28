@@ -14,7 +14,7 @@ const analyticsAPIPath = "analytics"
 type AnalyticsOptions struct {
 	From   string // Date filter (ISO 8601, Unix timestamp, or relative like "-7d")
 	To     string // Date filter
-	Limit  int    // Results per page (1-500, default 10)
+	Limit  int    // Results per page (1-1000 per OpenAPI spec; SDK does not enforce)
 	Cursor string // Pagination cursor
 	Device string // Filter by device ID
 }
@@ -103,15 +103,15 @@ type GetAnalyticsTimeSeriesRequest struct {
 type GetAnalyticsDomainsRequest struct {
 	ProfileID string
 	Options   *AnalyticsOptions
-	Status    string // Filter: "default", "blocked", "allowed"
-	Root      bool   // Aggregate by root domain
+	Status    LogStatus // Filter: "default", "blocked", "allowed"
+	Root      bool      // Aggregate by root domain
 }
 
 // GetAnalyticsDomainsTimeSeriesRequest includes domain-specific filters for time series.
 type GetAnalyticsDomainsTimeSeriesRequest struct {
 	ProfileID string
 	Options   *AnalyticsTimeSeriesOptions
-	Status    string
+	Status    LogStatus
 	Root      bool
 }
 
@@ -119,14 +119,14 @@ type GetAnalyticsDomainsTimeSeriesRequest struct {
 type GetAnalyticsDestinationsRequest struct {
 	ProfileID string
 	Options   *AnalyticsOptions
-	Type      string // Required: "countries" or "gafam"
+	Type      DestinationType // Required: "countries" or "gafam"
 }
 
 // GetAnalyticsDestinationsTimeSeriesRequest requires a type parameter.
 type GetAnalyticsDestinationsTimeSeriesRequest struct {
 	ProfileID string
 	Options   *AnalyticsTimeSeriesOptions
-	Type      string
+	Type      DestinationType
 }
 
 // AnalyticsService provides access to NextDNS analytics data.
@@ -146,6 +146,194 @@ type AnalyticsService interface {
 	// Destinations returns queries by country or GAFAM company.
 	GetDestinations(ctx context.Context, request *GetAnalyticsDestinationsRequest) (*AnalyticsResponse, error)
 	GetDestinationsSeries(ctx context.Context, request *GetAnalyticsDestinationsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// QueryTypes returns counts by DNS query type (A, AAAA, etc.).
+	GetQueryTypes(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetQueryTypesSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// Reasons returns counts by block reason (e.g. blocklist name).
+	GetReasons(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetReasonsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// IPs returns counts by client IP.
+	GetIPs(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error)
+	GetIPsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error)
+
+	// DNSSEC returns counts by DNSSEC validation status.
+	GetDNSSEC(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsDNSSECResponse, error)
+	GetDNSSECSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsDNSSECTimeSeriesResponse, error)
+
+	// Encryption returns counts by query encryption status.
+	GetEncryption(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsEncryptionResponse, error)
+	GetEncryptionSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsEncryptionTimeSeriesResponse, error)
+
+	// IPVersions returns counts by IP version (4 or 6).
+	GetIPVersions(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsIPVersionResponse, error)
+	GetIPVersionsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsIPVersionTimeSeriesResponse, error)
+
+	// Protocols returns counts by DNS protocol (DoH, DoT, DoQ, UDP, TCP).
+	GetProtocols(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsProtocolResponse, error)
+	GetProtocolsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsProtocolTimeSeriesResponse, error)
+}
+
+// AnalyticsDNSSECEntry is one row of the dnssec analytics response.
+type AnalyticsDNSSECEntry struct {
+	Validated bool `json:"validated"`
+	Queries   int  `json:"queries"`
+}
+
+// AnalyticsDNSSECTimeSeriesEntry has queries as an array.
+type AnalyticsDNSSECTimeSeriesEntry struct {
+	Validated bool  `json:"validated"`
+	Queries   []int `json:"queries"`
+}
+
+type analyticsDNSSECResponse struct {
+	Data []*AnalyticsDNSSECEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsDNSSECTimeSeriesResponse struct {
+	Data []*AnalyticsDNSSECTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsDNSSECResponse is the public response.
+type AnalyticsDNSSECResponse struct {
+	Data       []*AnalyticsDNSSECEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsDNSSECTimeSeriesResponse is the public time-series response.
+type AnalyticsDNSSECTimeSeriesResponse struct {
+	Data       []*AnalyticsDNSSECTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
+}
+
+// AnalyticsEncryptionEntry is one row of the encryption analytics response.
+type AnalyticsEncryptionEntry struct {
+	Encrypted bool `json:"encrypted"`
+	Queries   int  `json:"queries"`
+}
+
+// AnalyticsEncryptionTimeSeriesEntry has queries as an array.
+type AnalyticsEncryptionTimeSeriesEntry struct {
+	Encrypted bool  `json:"encrypted"`
+	Queries   []int `json:"queries"`
+}
+
+type analyticsEncryptionResponse struct {
+	Data []*AnalyticsEncryptionEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsEncryptionTimeSeriesResponse struct {
+	Data []*AnalyticsEncryptionTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsEncryptionResponse is the public response.
+type AnalyticsEncryptionResponse struct {
+	Data       []*AnalyticsEncryptionEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsEncryptionTimeSeriesResponse is the public time-series response.
+type AnalyticsEncryptionTimeSeriesResponse struct {
+	Data       []*AnalyticsEncryptionTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
+}
+
+// AnalyticsIPVersionEntry is one row of the ipVersions analytics response.
+type AnalyticsIPVersionEntry struct {
+	Version int `json:"version"`
+	Queries int `json:"queries"`
+}
+
+// AnalyticsIPVersionTimeSeriesEntry has queries as an array.
+type AnalyticsIPVersionTimeSeriesEntry struct {
+	Version int   `json:"version"`
+	Queries []int `json:"queries"`
+}
+
+type analyticsIPVersionResponse struct {
+	Data []*AnalyticsIPVersionEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsIPVersionTimeSeriesResponse struct {
+	Data []*AnalyticsIPVersionTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsIPVersionResponse is the public response.
+type AnalyticsIPVersionResponse struct {
+	Data       []*AnalyticsIPVersionEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsIPVersionTimeSeriesResponse is the public time-series response.
+type AnalyticsIPVersionTimeSeriesResponse struct {
+	Data       []*AnalyticsIPVersionTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
+}
+
+// AnalyticsProtocolEntry is one row of the protocols analytics response.
+type AnalyticsProtocolEntry struct {
+	Protocol DNSProtocol `json:"protocol"`
+	Queries  int         `json:"queries"`
+}
+
+// AnalyticsProtocolTimeSeriesEntry has queries as an array.
+type AnalyticsProtocolTimeSeriesEntry struct {
+	Protocol DNSProtocol `json:"protocol"`
+	Queries  []int       `json:"queries"`
+}
+
+type analyticsProtocolResponse struct {
+	Data []*AnalyticsProtocolEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+	} `json:"meta"`
+}
+
+type analyticsProtocolTimeSeriesResponse struct {
+	Data []*AnalyticsProtocolTimeSeriesEntry `json:"data"`
+	Meta struct {
+		Pagination AnalyticsPagination `json:"pagination"`
+		Series     AnalyticsSeriesInfo `json:"series"`
+	} `json:"meta"`
+}
+
+// AnalyticsProtocolResponse is the public response.
+type AnalyticsProtocolResponse struct {
+	Data       []*AnalyticsProtocolEntry
+	Pagination AnalyticsPagination
+}
+
+// AnalyticsProtocolTimeSeriesResponse is the public time-series response.
+type AnalyticsProtocolTimeSeriesResponse struct {
+	Data       []*AnalyticsProtocolTimeSeriesEntry
+	Pagination AnalyticsPagination
+	Series     AnalyticsSeriesInfo
 }
 
 type analyticsService struct {
@@ -156,8 +344,7 @@ type analyticsService struct {
 var _ AnalyticsService = &analyticsService{}
 
 // NewAnalyticsService creates a new analytics service.
-// nolint: revive
-func NewAnalyticsService(client *Client) *analyticsService {
+func NewAnalyticsService(client *Client) AnalyticsService {
 	return &analyticsService{
 		client: client,
 	}
@@ -217,7 +404,7 @@ func (s *analyticsService) GetStatus(ctx context.Context, request *GetAnalyticsR
 	path := analyticsPath(request.ProfileID, "status")
 	query := buildAnalyticsQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics status: %w", err)
 	}
@@ -239,7 +426,7 @@ func (s *analyticsService) GetStatusSeries(ctx context.Context, request *GetAnal
 	path := analyticsPath(request.ProfileID, "status;series")
 	query := buildTimeSeriesQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics status series: %w", err)
 	}
@@ -262,13 +449,13 @@ func (s *analyticsService) GetDomains(ctx context.Context, request *GetAnalytics
 	path := analyticsPath(request.ProfileID, "domains")
 	query := buildAnalyticsQuery(request.Options)
 	if request.Status != "" {
-		query.Set("status", request.Status)
+		query.Set("status", string(request.Status))
 	}
 	if request.Root {
 		query.Set("root", "true")
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics domains: %w", err)
 	}
@@ -290,13 +477,13 @@ func (s *analyticsService) GetDomainsSeries(ctx context.Context, request *GetAna
 	path := analyticsPath(request.ProfileID, "domains;series")
 	query := buildTimeSeriesQuery(request.Options)
 	if request.Status != "" {
-		query.Set("status", request.Status)
+		query.Set("status", string(request.Status))
 	}
 	if request.Root {
 		query.Set("root", "true")
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics domains series: %w", err)
 	}
@@ -319,7 +506,7 @@ func (s *analyticsService) GetDevices(ctx context.Context, request *GetAnalytics
 	path := analyticsPath(request.ProfileID, "devices")
 	query := buildAnalyticsQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics devices: %w", err)
 	}
@@ -341,7 +528,7 @@ func (s *analyticsService) GetDevicesSeries(ctx context.Context, request *GetAna
 	path := analyticsPath(request.ProfileID, "devices;series")
 	query := buildTimeSeriesQuery(request.Options)
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics devices series: %w", err)
 	}
@@ -364,10 +551,10 @@ func (s *analyticsService) GetDestinations(ctx context.Context, request *GetAnal
 	path := analyticsPath(request.ProfileID, "destinations")
 	query := buildAnalyticsQuery(request.Options)
 	if request.Type != "" {
-		query.Set("type", request.Type)
+		query.Set("type", string(request.Type))
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics destinations: %w", err)
 	}
@@ -389,10 +576,10 @@ func (s *analyticsService) GetDestinationsSeries(ctx context.Context, request *G
 	path := analyticsPath(request.ProfileID, "destinations;series")
 	query := buildTimeSeriesQuery(request.Options)
 	if request.Type != "" {
-		query.Set("type", request.Type)
+		query.Set("type", string(request.Type))
 	}
 
-	req, err := s.client.newRequestWithQuery(http.MethodGet, path, query, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get analytics destinations series: %w", err)
 	}
@@ -404,6 +591,321 @@ func (s *analyticsService) GetDestinationsSeries(ctx context.Context, request *G
 	}
 
 	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetQueryTypes returns counts by DNS query type.
+func (s *analyticsService) GetQueryTypes(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	path := analyticsPath(request.ProfileID, "queryTypes")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics queryTypes: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics queryTypes: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetQueryTypesSeries returns counts by DNS query type as a time series.
+func (s *analyticsService) GetQueryTypesSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "queryTypes;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics queryTypes series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics queryTypes series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetReasons returns counts by block reason.
+func (s *analyticsService) GetReasons(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	path := analyticsPath(request.ProfileID, "reasons")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics reasons: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics reasons: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetReasonsSeries returns counts by block reason as a time series.
+func (s *analyticsService) GetReasonsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "reasons;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics reasons series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics reasons series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetIPs returns counts by client IP.
+func (s *analyticsService) GetIPs(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsResponse, error) {
+	path := analyticsPath(request.ProfileID, "ips")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ips: %w", err)
+	}
+
+	response := analyticsResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ips: %w", err)
+	}
+
+	return &AnalyticsResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetIPsSeries returns counts by client IP as a time series.
+func (s *analyticsService) GetIPsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "ips;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ips series: %w", err)
+	}
+
+	response := analyticsTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ips series: %w", err)
+	}
+
+	return &AnalyticsTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetDNSSEC returns DNSSEC validation analytics.
+func (s *analyticsService) GetDNSSEC(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsDNSSECResponse, error) {
+	path := analyticsPath(request.ProfileID, "dnssec")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics dnssec: %w", err)
+	}
+
+	response := analyticsDNSSECResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics dnssec: %w", err)
+	}
+
+	return &AnalyticsDNSSECResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetDNSSECSeries returns DNSSEC validation analytics as a time series.
+func (s *analyticsService) GetDNSSECSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsDNSSECTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "dnssec;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics dnssec series: %w", err)
+	}
+
+	response := analyticsDNSSECTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics dnssec series: %w", err)
+	}
+
+	return &AnalyticsDNSSECTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetEncryption returns query encryption analytics.
+func (s *analyticsService) GetEncryption(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsEncryptionResponse, error) {
+	path := analyticsPath(request.ProfileID, "encryption")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics encryption: %w", err)
+	}
+
+	response := analyticsEncryptionResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics encryption: %w", err)
+	}
+
+	return &AnalyticsEncryptionResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetEncryptionSeries returns query encryption analytics as a time series.
+func (s *analyticsService) GetEncryptionSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsEncryptionTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "encryption;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics encryption series: %w", err)
+	}
+
+	response := analyticsEncryptionTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics encryption series: %w", err)
+	}
+
+	return &AnalyticsEncryptionTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetIPVersions returns IP-version analytics.
+func (s *analyticsService) GetIPVersions(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsIPVersionResponse, error) {
+	path := analyticsPath(request.ProfileID, "ipVersions")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ipVersions: %w", err)
+	}
+
+	response := analyticsIPVersionResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ipVersions: %w", err)
+	}
+
+	return &AnalyticsIPVersionResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetIPVersionsSeries returns IP-version analytics as a time series.
+func (s *analyticsService) GetIPVersionsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsIPVersionTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "ipVersions;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics ipVersions series: %w", err)
+	}
+
+	response := analyticsIPVersionTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics ipVersions series: %w", err)
+	}
+
+	return &AnalyticsIPVersionTimeSeriesResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+		Series:     response.Meta.Series,
+	}, nil
+}
+
+// GetProtocols returns DNS protocol analytics.
+func (s *analyticsService) GetProtocols(ctx context.Context, request *GetAnalyticsRequest) (*AnalyticsProtocolResponse, error) {
+	path := analyticsPath(request.ProfileID, "protocols")
+	query := buildAnalyticsQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics protocols: %w", err)
+	}
+
+	response := analyticsProtocolResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics protocols: %w", err)
+	}
+
+	return &AnalyticsProtocolResponse{
+		Data:       response.Data,
+		Pagination: response.Meta.Pagination,
+	}, nil
+}
+
+// GetProtocolsSeries returns DNS protocol analytics as a time series.
+func (s *analyticsService) GetProtocolsSeries(ctx context.Context, request *GetAnalyticsTimeSeriesRequest) (*AnalyticsProtocolTimeSeriesResponse, error) {
+	path := analyticsPath(request.ProfileID, "protocols;series")
+	query := buildTimeSeriesQuery(request.Options)
+
+	req, err := s.client.newRequest(http.MethodGet, path, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request to get analytics protocols series: %w", err)
+	}
+
+	response := analyticsProtocolTimeSeriesResponse{}
+	err = s.client.do(ctx, req, &response)
+	if err != nil {
+		return nil, fmt.Errorf("error making request to get analytics protocols series: %w", err)
+	}
+
+	return &AnalyticsProtocolTimeSeriesResponse{
 		Data:       response.Data,
 		Pagination: response.Meta.Pagination,
 		Series:     response.Meta.Series,

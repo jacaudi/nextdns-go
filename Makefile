@@ -25,3 +25,12 @@ tidy:
 deps:
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
 	@go install github.com/mfridman/tparse@latest
+
+.PHONY: vet
+vet:
+	@go vet ./...
+
+.PHONY: clean
+clean:
+	@rm -f coverage.out
+	@rm -rf dist/

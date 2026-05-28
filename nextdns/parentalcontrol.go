@@ -72,8 +72,7 @@ type parentalControlService struct {
 var _ ParentalControlService = &parentalControlService{}
 
 // NewParentalControlService returns a new NextDNS parental control service.
-// nolint: revive
-func NewParentalControlService(client *Client) *parentalControlService {
+func NewParentalControlService(client *Client) ParentalControlService {
 	return &parentalControlService{
 		client: client,
 	}
@@ -82,7 +81,7 @@ func NewParentalControlService(client *Client) *parentalControlService {
 // Get returns the parental control settings of a profile.
 func (s *parentalControlService) Get(ctx context.Context, request *GetParentalControlRequest) (*ParentalControl, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the parentalControl: %w", err)
 	}
@@ -99,13 +98,12 @@ func (s *parentalControlService) Get(ctx context.Context, request *GetParentalCo
 // Update updates the parental control settings of a profile.
 func (s *parentalControlService) Update(ctx context.Context, request *UpdateParentalControlRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), parentalControlAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.ParentalControl)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.ParentalControl)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the parentalControl: %w", err)
 	}
 
-	response := parentalControlResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the parentalControl: %w", err)
 	}

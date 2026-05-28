@@ -44,8 +44,7 @@ type settingsBlockPageService struct {
 var _ SettingsBlockPageService = &settingsBlockPageService{}
 
 // NewSettingsBlockPageService returns a new NextDNS settings block page service.
-// nolint: revive
-func NewSettingsBlockPageService(client *Client) *settingsBlockPageService {
+func NewSettingsBlockPageService(client *Client) SettingsBlockPageService {
 	return &settingsBlockPageService{
 		client: client,
 	}
@@ -54,7 +53,7 @@ func NewSettingsBlockPageService(client *Client) *settingsBlockPageService {
 // Get returns the settings block page of a profile.
 func (s *settingsBlockPageService) Get(ctx context.Context, request *GetSettingsBlockPageRequest) (*SettingsBlockPage, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsBlockPageAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to get the block page settings: %w", err)
 	}
@@ -71,13 +70,12 @@ func (s *settingsBlockPageService) Get(ctx context.Context, request *GetSettings
 // Update updates the settings block page of a profile.
 func (s *settingsBlockPageService) Update(ctx context.Context, request *UpdateSettingsBlockPageRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), settingsBlockPageAPIPath)
-	req, err := s.client.newRequest(http.MethodPatch, path, request.SettingsBlockPage)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.SettingsBlockPage)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the block page settings: %w", err)
 	}
 
-	response := settingsBlockPageResponse{}
-	err = s.client.do(ctx, req, &response)
+	err = s.client.do(ctx, req, nil)
 	if err != nil {
 		return fmt.Errorf("error making a request to update the block page settings: %w", err)
 	}

@@ -2,6 +2,8 @@ package nextdns
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -131,9 +133,19 @@ func TestDenylistAdd(t *testing.T) {
 		c.Equal(r.Method, "POST")
 		c.Equal(r.URL.Path, "/profiles/abc123/denylist")
 
+		body, err := io.ReadAll(r.Body)
+		c.NoErr(err)
+		var got map[string]any
+		c.NoErr(json.Unmarshal(body, &got))
+		c.Equal(got["id"], "malware.com")
+		c.Equal(got["active"], true)
+		// ProfileID is path-bound and must not leak into the JSON body.
+		_, profileIDPresent := got["ProfileID"]
+		c.Equal(profileIDPresent, false)
+
 		w.WriteHeader(http.StatusOK)
 		resp := `{"data": {"id": "malware.com"}}`
-		_, err := w.Write([]byte(resp))
+		_, err = w.Write([]byte(resp))
 		c.NoErr(err)
 	}))
 	defer ts.Close()

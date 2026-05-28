@@ -41,7 +41,7 @@ type DeleteAllowlistRequest struct {
 
 // AddAllowlistRequest encapsulates the request for adding a single allowlist entry.
 type AddAllowlistRequest struct {
-	ProfileID string
+	ProfileID string `json:"-"`
 	ID        string `json:"id"`
 	Active    *bool  `json:"active,omitempty"`
 }
@@ -68,8 +68,7 @@ type allowlistService struct {
 var _ AllowlistService = &allowlistService{}
 
 // NewAllowlistService returns a new NextDNS allowlist service.
-// nolint: revive
-func NewAllowlistService(client *Client) *allowlistService {
+func NewAllowlistService(client *Client) AllowlistService {
 	return &allowlistService{
 		client: client,
 	}
@@ -78,7 +77,7 @@ func NewAllowlistService(client *Client) *allowlistService {
 // Create creates an allowlist for a profile.
 func (s *allowlistService) Create(ctx context.Context, request *CreateAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
-	req, err := s.client.newRequest(http.MethodPut, path, request.Allowlist)
+	req, err := s.client.newRequest(http.MethodPut, path, nil, request.Allowlist)
 	if err != nil {
 		return fmt.Errorf("error creating request to create an allow list: %w", err)
 	}
@@ -94,7 +93,7 @@ func (s *allowlistService) Create(ctx context.Context, request *CreateAllowlistR
 // List returns the allowlist of a profile.
 func (s *allowlistService) List(ctx context.Context, request *ListAllowlistRequest) ([]*Allowlist, error) {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
-	req, err := s.client.newRequest(http.MethodGet, path, nil)
+	req, err := s.client.newRequest(http.MethodGet, path, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request to list the allow list: %w", err)
 	}
@@ -111,7 +110,7 @@ func (s *allowlistService) List(ctx context.Context, request *ListAllowlistReque
 // Update updates an allowlist of a profile.
 func (s *allowlistService) Update(ctx context.Context, request *UpdateAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodPatch, path, request.Allowlist)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Allowlist)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the allow list id %s: %w", request.ID, err)
 	}
@@ -127,7 +126,7 @@ func (s *allowlistService) Update(ctx context.Context, request *UpdateAllowlistR
 // Delete removes an entry from the allowlist.
 func (s *allowlistService) Delete(ctx context.Context, request *DeleteAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistIDAPIPath(request.ID))
-	req, err := s.client.newRequest(http.MethodDelete, path, nil)
+	req, err := s.client.newRequest(http.MethodDelete, path, nil, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request to delete allow list entry %s: %w", request.ID, err)
 	}
@@ -143,14 +142,7 @@ func (s *allowlistService) Delete(ctx context.Context, request *DeleteAllowlistR
 // Add adds a single entry to the allowlist.
 func (s *allowlistService) Add(ctx context.Context, request *AddAllowlistRequest) error {
 	path := fmt.Sprintf("%s/%s", profileAPIPath(request.ProfileID), allowlistAPIPath)
-	body := struct {
-		ID     string `json:"id"`
-		Active *bool  `json:"active,omitempty"`
-	}{
-		ID:     request.ID,
-		Active: request.Active,
-	}
-	req, err := s.client.newRequest(http.MethodPost, path, body)
+	req, err := s.client.newRequest(http.MethodPost, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to add allow list entry %s: %w", request.ID, err)
 	}
