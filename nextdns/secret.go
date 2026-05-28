@@ -13,33 +13,47 @@ import (
 // JSON dumps) grep-able and harder to produce. Per go-standards.md §15.2.
 type Secret string
 
-// String implements fmt.Stringer. Always returns "****".
-func (s Secret) String() string { return "****" }
+// redacted is the single source of truth for the redaction marker emitted by
+// String, MarshalJSON, MarshalText, and Format.
+const redacted = "****"
 
-// MarshalJSON implements json.Marshaler. Always emits "****".
+// String implements fmt.Stringer. Always returns the redaction marker.
+func (s Secret) String() string { return redacted }
+
+// MarshalJSON implements json.Marshaler. Always emits the redaction marker.
 func (s Secret) MarshalJSON() ([]byte, error) {
-	return []byte(`"****"`), nil
+	return []byte(`"` + redacted + `"`), nil
 }
 
-// MarshalText implements encoding.TextMarshaler. Always emits "****".
+// MarshalText implements encoding.TextMarshaler. Always emits the redaction
+// marker.
 func (s Secret) MarshalText() ([]byte, error) {
-	return []byte("****"), nil
+	return []byte(redacted), nil
 }
 
 // Expose returns the underlying secret value. Name is intentional — it is
 // grep-able in code review.
 func (s Secret) Expose() string { return string(s) }
 
-// Format implements fmt.Formatter. Every verb redacts to "****" — this closes
-// two leak paths that the Stringer/Marshaler trio does not cover:
+// Format implements fmt.Formatter. Verbs routed through fmt.Formatter redact
+// to "****" — this closes two leak paths that the Stringer/Marshaler trio
+// does not cover:
 //
 //   - %#v falls back to the underlying string (Secret is type Secret string),
 //     printing the raw value.
-//   - %d (or any wrong verb) embeds the raw value in fmt's bad-verb
+//   - Any wrong verb (e.g. %d) embeds the raw value in fmt's bad-verb
 //     diagnostic, e.g. "%!d(nextdns.Secret=raw-value)".
 //
-// Both patterns are extremely common in error wrapping (`fmt.Errorf("...: %#v", cfg)`)
+// Both patterns are extremely common in error wrapping (fmt.Errorf("...: %#v", cfg))
 // and in developer-debug logging. Per go-standards.md §15.2.
+//
+// Carve-outs in the fmt package contract: %T and %p bypass fmt.Formatter.
+//   - %T prints the Go type name ("nextdns.Secret") — safe, not a leak.
+//   - %p on a value-typed Secret produces fmt's bad-verb diagnostic with the
+//     raw value embedded. Callers must not format Secret with %p.
+//
+// Width and precision flags (e.g. %10s, %.3s) are ignored — the output is
+// always exactly "****".
 func (s Secret) Format(f fmt.State, _ rune) {
-	_, _ = io.WriteString(f, "****")
+	_, _ = io.WriteString(f, redacted)
 }

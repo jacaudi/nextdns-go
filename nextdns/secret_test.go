@@ -58,4 +58,21 @@ func TestSecretFormatRedactsAllVerbs(t *testing.T) {
 	out := fmt.Sprintf("%#v", Container{Key: s})
 	c.True(strings.Contains(out, "****"))
 	c.True(!strings.Contains(out, "supersecret"))
+
+	// fmt's %T/%p carve-out: these bypass fmt.Formatter per the fmt package
+	// contract. Documented here so any future fmt-package change is visible.
+	//
+	// %T prints the Go type name only — safe, no leak.
+	c.Equal(fmt.Sprintf("%T", s), "nextdns.Secret")
+	// %p on a value-typed Secret produces fmt's bad-verb diagnostic with the
+	// raw value embedded. This assertion documents the *current* behavior — it
+	// is NOT regression protection. If Go's fmt package ever routes %p through
+	// Formatter, this test will fail and force a re-evaluation of the
+	// Format method and the doc comment in secret.go.
+	c.True(strings.Contains(fmt.Sprintf("%p", s), "supersecret")) //nolint:govet // intentional: documents fmt's %p carve-out
+
+	// Idiomatic error wrapping must not leak.
+	err := fmt.Errorf("api key invalid: %v", s)
+	c.True(strings.Contains(err.Error(), "****"))
+	c.True(!strings.Contains(err.Error(), "supersecret"))
 }
