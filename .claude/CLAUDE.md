@@ -17,7 +17,7 @@ golangci-lint run ./... # lint
 go vet ./...
 ```
 
-The Makefile wires the standard targets: `make test`, `make lint`, `make vet`, `make clean`, `make coverage`, `make tparse`.
+The repo uses [Task](https://taskfile.dev) (`brew install go-task`). `taskfile.yml` wires the standard targets: `task test`, `task lint`, `task vet`, `task clean`, `task coverage`, `task tparse`. Run `task --list` to see every target.
 
 ## Gotchas
 
