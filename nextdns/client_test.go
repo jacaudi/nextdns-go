@@ -153,3 +153,45 @@ func TestRateLimitObserverUnsetNoOp(t *testing.T) {
 	c.NoErr(err)
 	// No observer set; nothing to assert except that the call succeeds.
 }
+
+func TestWithHTTPClientNoTransport(t *testing.T) {
+	c := is.New(t)
+
+	// Empty *http.Client (Transport == nil). Before the fix, WithAPIKey
+	// captures nil into authTransport.rt and the first request panics.
+	_, err := New(
+		WithBaseURL("https://api.nextdns.io/"),
+		WithHTTPClient(&http.Client{}),
+		WithAPIKey(Secret("test-key")),
+	)
+	c.NoErr(err)
+}
+
+func TestAuthTransportDoesNotMutateRequest(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{"id":"abc"}}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL), WithAPIKey(Secret("k")))
+	c.NoErr(err)
+
+	// Build a request, round-trip it twice through the auth transport.
+	// Header should have exactly one X-Api-Key on each attempt (no duplication).
+	req, err := client.newRequest(http.MethodGet, "profiles/abc", nil, nil)
+	c.NoErr(err)
+	c.Equal(len(req.Header.Values("X-Api-Key")), 0) // not added pre-RoundTrip
+
+	res1, err := client.client.Transport.RoundTrip(req)
+	c.NoErr(err)
+	_ = res1.Body.Close()
+	c.Equal(len(req.Header.Values("X-Api-Key")), 0) // not mutated by RoundTrip
+
+	res2, err := client.client.Transport.RoundTrip(req)
+	c.NoErr(err)
+	_ = res2.Body.Close()
+	c.Equal(len(req.Header.Values("X-Api-Key")), 0) // still not mutated
+}

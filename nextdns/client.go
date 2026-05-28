@@ -132,6 +132,13 @@ func WithAPIKey(apiKey Secret) ClientOption {
 			return ErrEmptyAPIToken
 		}
 
+		// http.Client.Do() falls back to http.DefaultTransport when Transport
+		// is nil. Mirror that fallback explicitly so authTransport.rt is never
+		// nil — otherwise t.rt.RoundTrip(req) panics inside the wrapper.
+		if c.client.Transport == nil {
+			c.client.Transport = http.DefaultTransport
+		}
+
 		transport := authTransport{
 			rt:     c.client.Transport,
 			apiKey: apiKey,
@@ -415,10 +422,14 @@ type authTransport struct {
 	apiKey Secret
 }
 
-// RoundTrip adds the authorization header to requests.
+// RoundTrip adds the authorization header to a CLONE of the inbound request,
+// per the http.RoundTripper contract ("RoundTrip should not modify the
+// request"). Uses Set rather than Add so retries through the same transport
+// do not accumulate duplicate X-Api-Key headers.
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("X-Api-Key", t.apiKey.Expose())
-	return t.rt.RoundTrip(req)
+	clone := req.Clone(req.Context())
+	clone.Header.Set("X-Api-Key", t.apiKey.Expose())
+	return t.rt.RoundTrip(clone)
 }
 
 // parseRateLimit pulls X-RateLimit-* headers out of an HTTP response.
