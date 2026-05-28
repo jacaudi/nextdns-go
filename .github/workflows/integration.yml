@@ -1,0 +1,74 @@
+# Integration tests — run the read-only-safe examples against the real
+# NextDNS API to catch contract drift that the unit tests (which use
+# httptest fixtures) cannot.
+#
+# Required repo secrets (set under Settings → Secrets → Actions):
+#   NEXTDNS_API_KEY     — API key for the test account.
+#   NEXTDNS_PROFILE_ID  — Profile ID for a dedicated TEST profile (not prod).
+#
+# The job exits cleanly with a notice if either secret is unset, so this
+# workflow is safe in forks and on repos that haven't configured it yet.
+#
+# Scope (run order, all sequential):
+#   examples/analytics       — read-only (Get analytics).
+#   examples/denylist        — round-trips example.com on the test profile
+#                              (Add → List → Update inactive → Delete);
+#                              cleans up after itself unless it fails mid-run.
+#   examples/logs query      — read-only.
+#   examples/logs download   — read-only (writes logs.csv to ephemeral cwd).
+#
+# Intentionally skipped:
+#   examples/profiles  — creates and deletes a real profile; would leave a
+#                        stray profile on failure. Refactor for cleanup first.
+#   examples/logs stream — long-lived SSE; needs a timeout wrapper.
+name: Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:  # fork PRs skip via empty secret; same-repo PRs get full coverage
+  schedule:
+    - cron: '0 6 * * *'  # daily catch-API-drift run at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXTDNS_API_KEY: ${{ secrets.NEXTDNS_API_KEY }}
+      NEXTDNS_PROFILE_ID: ${{ secrets.NEXTDNS_PROFILE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+
+      - name: Run integration examples
+        run: |
+          set -euo pipefail
+          if [[ -z "${NEXTDNS_API_KEY:-}" || -z "${NEXTDNS_PROFILE_ID:-}" ]]; then
+            echo "::notice::NEXTDNS_API_KEY or NEXTDNS_PROFILE_ID not set; skipping integration tests."
+            exit 0
+          fi
+
+          echo "::group::examples/analytics"
+          (cd examples/analytics && go run .)
+          echo "::endgroup::"
+
+          echo "::group::examples/denylist"
+          (cd examples/denylist && go run .)
+          echo "::endgroup::"
+
+          echo "::group::examples/logs query"
+          (cd examples/logs && go run . query)
+          echo "::endgroup::"
+
+          echo "::group::examples/logs download"
+          (cd examples/logs && go run . download)
+          echo "::endgroup::"
