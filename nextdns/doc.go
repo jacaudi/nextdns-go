@@ -22,9 +22,11 @@
 // # HTTP defaults
 //
 // The default *http.Client has a 30 second overall timeout, a TLS 1.3 floor,
-// and a tuned transport (5s dial, 5s TLS handshake, 10s response header).
-// Override with WithHTTPClient when you need different behavior — for example,
-// to disable the overall timeout for long-lived streaming endpoints.
+// a tuned transport (30s dial, 5s TLS handshake, 10s response header), and
+// respects HTTPS_PROXY/HTTP_PROXY/NO_PROXY env vars via
+// http.ProxyFromEnvironment. Override with WithHTTPClient when you need
+// different behavior — for example, to disable the overall timeout for
+// long-lived streaming endpoints.
 //
 // # Services
 //
