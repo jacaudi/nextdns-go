@@ -3,6 +3,9 @@
 // Run query:    NEXTDNS_API_KEY=... NEXTDNS_PROFILE_ID=abc123 go run . query
 // Run download: NEXTDNS_API_KEY=... NEXTDNS_PROFILE_ID=abc123 go run . download
 // Run stream:   NEXTDNS_API_KEY=... NEXTDNS_PROFILE_ID=abc123 go run . stream
+//
+// Set NEXTDNS_DEBUG=1 to enable structured request/response logging at
+// slog.LevelDebug; otherwise the SDK is silent.
 package main
 
 import (
@@ -11,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,7 +32,27 @@ func main() {
 		log.Fatal("NEXTDNS_API_KEY and NEXTDNS_PROFILE_ID must be set")
 	}
 
-	client, err := nextdns.New(nextdns.WithAPIKey(nextdns.Secret(apiKey)))
+	opts := []nextdns.ClientOption{
+		nextdns.WithAPIKey(nextdns.Secret(apiKey)),
+		// Observe rate-limit headers on every response — even 4xx/5xx.
+		// Surface a warning when the remaining budget gets thin.
+		nextdns.WithRateLimitObserver(func(rl nextdns.RateLimit) {
+			if rl.Limit > 0 && rl.Remaining < 50 {
+				log.Printf("rate limit low: %d/%d remaining (resets %s)",
+					rl.Remaining, rl.Limit, rl.Reset.Format("15:04:05"))
+			}
+		}),
+	}
+	// WithLogger gates SDK request/response tracing on a slog handler;
+	// the SDK only logs at slog.LevelDebug, so callers control verbosity
+	// by choosing the handler's minimum level.
+	if os.Getenv("NEXTDNS_DEBUG") == "1" {
+		opts = append(opts, nextdns.WithLogger(
+			slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		))
+	}
+
+	client, err := nextdns.New(opts...)
 	if err != nil {
 		log.Fatalf("client init: %v", err)
 	}
