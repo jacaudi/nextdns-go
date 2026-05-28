@@ -1,0 +1,72 @@
+# Reusable Go test workflow.
+# Inlined from jacaudi/github-actions component-test.yml@v0.20.3 and slimmed
+# to the Go path nextdns-go actually uses. Restore Python/Node/Bun/custom
+# framework branches from upstream if you ever need them.
+name: Test
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: 'stable'
+      coverage:
+        description: 'Enable code coverage collection'
+        required: false
+        type: boolean
+        default: false
+      test-args:
+        description: 'Additional arguments to pass to go test'
+        required: false
+        type: string
+        default: ''
+      test-packages:
+        description: 'Package pattern to test'
+        required: false
+        type: string
+        default: './...'
+      working-directory:
+        description: 'Working directory for go test'
+        required: false
+        type: string
+        default: '.'
+      timeout-minutes:
+        description: 'Timeout for test execution in minutes'
+        required: false
+        type: number
+        default: 30
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          if [[ "${{ inputs.coverage }}" == "true" ]]; then
+            go test -v -coverprofile=coverage.out ${{ inputs.test-args }} ${{ inputs.test-packages }}
+            echo ""
+            echo "::group::Coverage summary"
+            go tool cover -func=coverage.out | tail -1
+            echo "::endgroup::"
+          else
+            go test -v ${{ inputs.test-args }} ${{ inputs.test-packages }}
+          fi
