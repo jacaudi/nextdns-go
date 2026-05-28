@@ -323,66 +323,21 @@ func (c *Client) handleResponse(res *http.Response, v interface{}) error {
 		return nil
 	}
 
-	// Sets some default additional informations that can be used by the client to debug the error.
-	meta := map[string]string{
-		"body":        string(out),
-		"http_status": http.StatusText(res.StatusCode),
-	}
-
 	// If the response is not a 200, then we need to handle the error.
 	// TODO(jacaudi): Report the behavior to NextDNS, but there are errors that return HTTP 200 ("duplicate" case). See https://github.com/jacaudi/nextdns-go/issues/8
 	if res.StatusCode >= http.StatusBadRequest || strings.Contains(string(out), "\"errors\"") {
-		if res.StatusCode >= http.StatusInternalServerError {
-			return &Error{
-				Type:    ErrorTypeServiceError,
-				Message: errInternalServiceError,
-				Errors:  nil,
-				Meta:    meta,
-			}
-		}
-
-		// Tries to handle the error response body from the NextDNS API,
-		// encapsulated in a client error.
-		errorRes := &ErrorResponse{}
-		err = json.Unmarshal(out, errorRes)
-		if err != nil {
-			var jsonErr *json.SyntaxError
-			if errors.As(err, &jsonErr) {
-				meta["err"] = jsonErr.Error()
-				return &Error{
-					Type:    ErrorTypeMalformed,
-					Message: errMalformedErrorBody,
-					Errors:  nil,
-					Meta:    meta,
-				}
-			}
-			return err
-		}
-
-		// Sets custom error messages for the client based on the HTTP status code.
-		var errType ErrorType
-
-		switch res.StatusCode {
-		case http.StatusForbidden:
-			errType = ErrorTypeAuthentication
-		case http.StatusNotFound:
-			errType = ErrorTypeNotFound
-		default:
-			errType = ErrorTypeRequest
-		}
-
-		// Returns the error response from the NextDNS API encapsulated in a client error.
-		return &Error{
-			Type:    errType,
-			Message: errResponseError,
-			Errors:  errorRes,
-			Meta:    meta,
-		}
+		return c.errorFromBytes(res.StatusCode, out)
 	}
 
 	// Returns if there is no object to decode.
 	if v == nil {
 		return nil
+	}
+
+	// Sets some default additional informations that can be used by the client to debug the error.
+	meta := map[string]string{
+		"body":        string(out),
+		"http_status": http.StatusText(res.StatusCode),
 	}
 
 	// Decodes the response body into the provided object.
@@ -402,6 +357,95 @@ func (c *Client) handleResponse(res *http.Response, v interface{}) error {
 	}
 
 	return nil
+}
+
+// parseErrorResponse reads an *http.Response whose body is expected to be a
+// NextDNS error payload, attempts to decode the JSON into *Error, and returns
+// the typed error (falling back to a generic status-code error if the body is
+// unreadable or malformed). The caller is responsible for closing res.Body.
+//
+// This is the entry point for callers that bypass handleResponse — currently
+// Logs.Download and Logs.Stream, whose success-path bodies are not JSON and
+// therefore can't be funneled through handleResponse. handleResponse itself
+// goes through errorFromBytes directly because it has already read the body.
+//
+// Note: does NOT assume res.StatusCode >= 400. handleResponse also routes 200
+// responses whose body contains "\"errors\"" through here (see the NextDNS
+// "duplicate" quirk), and callers that detect a failure by content-type or
+// other heuristic may legitimately invoke this on a 2xx status.
+func (c *Client) parseErrorResponse(res *http.Response) error {
+	out, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	return c.errorFromBytes(res.StatusCode, out)
+}
+
+// errorFromBytes maps a (status code, raw body) pair to the SDK's typed
+// *Error. Shared between handleResponse (which has already read the body)
+// and parseErrorResponse (which reads it for non-JSON-body callers).
+//
+// Behavior:
+//   - 5xx: short-circuit to ErrorTypeServiceError without decoding the body.
+//   - Otherwise: decode body as *ErrorResponse. JSON syntax errors return
+//     ErrorTypeMalformed; other Unmarshal errors surface unwrapped.
+//   - Status → ErrorType mapping: 403 → Authentication, 404 → NotFound,
+//     everything else → Request.
+//
+// The meta map carries the raw body and status text (and, on syntax error,
+// the json.SyntaxError text) to aid debugging.
+func (c *Client) errorFromBytes(statusCode int, body []byte) error {
+	meta := map[string]string{
+		"body":        string(body),
+		"http_status": http.StatusText(statusCode),
+	}
+
+	if statusCode >= http.StatusInternalServerError {
+		return &Error{
+			Type:    ErrorTypeServiceError,
+			Message: errInternalServiceError,
+			Errors:  nil,
+			Meta:    meta,
+		}
+	}
+
+	// Tries to handle the error response body from the NextDNS API,
+	// encapsulated in a client error.
+	errorRes := &ErrorResponse{}
+	err := json.Unmarshal(body, errorRes)
+	if err != nil {
+		var jsonErr *json.SyntaxError
+		if errors.As(err, &jsonErr) {
+			meta["err"] = jsonErr.Error()
+			return &Error{
+				Type:    ErrorTypeMalformed,
+				Message: errMalformedErrorBody,
+				Errors:  nil,
+				Meta:    meta,
+			}
+		}
+		return err
+	}
+
+	// Sets custom error messages for the client based on the HTTP status code.
+	var errType ErrorType
+
+	switch statusCode {
+	case http.StatusForbidden:
+		errType = ErrorTypeAuthentication
+	case http.StatusNotFound:
+		errType = ErrorTypeNotFound
+	default:
+		errType = ErrorTypeRequest
+	}
+
+	// Returns the error response from the NextDNS API encapsulated in a client error.
+	return &Error{
+		Type:    errType,
+		Message: errResponseError,
+		Errors:  errorRes,
+		Meta:    meta,
+	}
 }
 
 // newRequest creates a new HTTP request with optional query parameters and body.

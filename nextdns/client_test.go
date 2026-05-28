@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -299,4 +301,83 @@ func TestStripAuthOnCrossHost(t *testing.T) {
 	}
 	err = stripAuthOnCrossHost(mkReq("api.nextdns.io"), via)
 	c.True(err != nil)
+}
+
+// TestParseErrorResponse_ContractParity exercises (*Client).parseErrorResponse
+// directly to lock in the extracted method's contract. The same status →
+// ErrorType mapping is already covered indirectly via the per-service error
+// tests (settings/security/profiles/etc.); this test pins the contract for
+// the direct callers added in Tasks 5 and 6 (Logs.Download, Logs.Stream).
+func TestParseErrorResponse_ContractParity(t *testing.T) {
+	// Helper: synthesize an *http.Response from a status code and body string,
+	// the way Download/Stream will hand one to parseErrorResponse.
+	mkRes := func(status int, body string) *http.Response {
+		return &http.Response{
+			StatusCode: status,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     http.Header{},
+		}
+	}
+
+	client := &Client{}
+
+	t.Run("5xx short-circuits without decoding the body", func(t *testing.T) {
+		c := is.New(t)
+
+		res := mkRes(http.StatusInternalServerError, "not even JSON")
+		err := client.parseErrorResponse(res)
+
+		var apiErr *Error
+		c.True(errors.As(err, &apiErr))
+		c.Equal(apiErr.Type, ErrorTypeServiceError)
+		c.Equal(apiErr.Errors, (*ErrorResponse)(nil))
+		c.Equal(apiErr.Meta["body"], "not even JSON")
+		c.Equal(apiErr.Meta["http_status"], http.StatusText(http.StatusInternalServerError))
+	})
+
+	t.Run("403 maps to ErrorTypeAuthentication", func(t *testing.T) {
+		c := is.New(t)
+
+		res := mkRes(http.StatusForbidden, `{"errors":[{"code":"forbidden"}]}`)
+		err := client.parseErrorResponse(res)
+
+		var apiErr *Error
+		c.True(errors.As(err, &apiErr))
+		c.Equal(apiErr.Type, ErrorTypeAuthentication)
+		c.True(apiErr.Errors != nil)
+	})
+
+	t.Run("404 maps to ErrorTypeNotFound", func(t *testing.T) {
+		c := is.New(t)
+
+		res := mkRes(http.StatusNotFound, `{"errors":[{"code":"notFound"}]}`)
+		err := client.parseErrorResponse(res)
+
+		var apiErr *Error
+		c.True(errors.As(err, &apiErr))
+		c.Equal(apiErr.Type, ErrorTypeNotFound)
+	})
+
+	t.Run("other 4xx maps to ErrorTypeRequest", func(t *testing.T) {
+		c := is.New(t)
+
+		res := mkRes(http.StatusBadRequest, `{"errors":[{"code":"invalidDomain"}]}`)
+		err := client.parseErrorResponse(res)
+
+		var apiErr *Error
+		c.True(errors.As(err, &apiErr))
+		c.Equal(apiErr.Type, ErrorTypeRequest)
+	})
+
+	t.Run("malformed JSON body yields ErrorTypeMalformed", func(t *testing.T) {
+		c := is.New(t)
+
+		res := mkRes(http.StatusBadRequest, `{"errors": [`)
+		err := client.parseErrorResponse(res)
+
+		var apiErr *Error
+		c.True(errors.As(err, &apiErr))
+		c.Equal(apiErr.Type, ErrorTypeMalformed)
+		c.True(apiErr.Meta["err"] != "")
+	})
 }
