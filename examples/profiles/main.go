@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -48,19 +49,28 @@ func main() {
 	}
 	fmt.Printf("\nCreated profile %s\n", created)
 
-	// Get details on the new profile.
+	// Get details on the new profile. The returned *Profile has ID populated.
 	profile, err := client.Profiles.Get(ctx, &nextdns.GetProfileRequest{ProfileID: created})
 	if err != nil {
 		log.Fatalf("get profile: %v", err)
 	}
 	fmt.Printf("Profile name: %s (fingerprint %s)\n", profile.Name, profile.Fingerprint)
 
-	// Update the name.
+	// Get → mutate → Update. We reuse the *Profile returned from Get; the
+	// SDK's UpdateProfileRequest.MarshalJSON strips Profile.ID from the
+	// PATCH body so the API contract isn't widened (the id is already in
+	// the URL path).
+	profile.Name = "nextdns-go example (updated)"
 	err = client.Profiles.Update(ctx, &nextdns.UpdateProfileRequest{
 		ProfileID: created,
-		Profile:   &nextdns.Profile{Name: "nextdns-go example (updated)"},
+		Profile:   profile,
 	})
 	if err != nil {
+		// Branch on the typed *nextdns.Error to react to specific failure modes.
+		var apiErr *nextdns.Error
+		if errors.As(err, &apiErr) {
+			log.Fatalf("update profile (%s): %s", apiErr.Type, apiErr.Message)
+		}
 		log.Fatalf("update profile: %v", err)
 	}
 	fmt.Println("Profile updated")
