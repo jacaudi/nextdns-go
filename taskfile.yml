@@ -1,0 +1,55 @@
+version: '3'
+
+# Targets mirror the prior Makefile one-for-one. Install Task from
+# https://taskfile.dev or `brew install go-task`. Run `task --list` to see
+# every target and its description.
+
+tasks:
+  test:
+    desc: Run the unit test suite.
+    cmds:
+      - go test ./...
+
+  tparse:
+    desc: Run tests with the race detector and coverage, pretty-printed via tparse.
+    cmds:
+      - go test -race -count=1 ./... -json -cover -coverpkg=./... | tparse
+
+  coverage:
+    desc: Generate coverage profile and print per-function coverage.
+    cmds:
+      - go test -cover -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out
+
+  lint:
+    desc: Run golangci-lint and govulncheck.
+    cmds:
+      - golangci-lint run ./...
+      - govulncheck ./...
+
+  vet:
+    desc: Run go vet.
+    cmds:
+      - go vet ./...
+
+  tidy:
+    desc: Run go mod tidy.
+    cmds:
+      - go mod tidy
+
+  deps:
+    desc: Install local dev tools (govulncheck, tparse).
+    cmds:
+      - go install golang.org/x/vuln/cmd/govulncheck@latest
+      - go install github.com/mfridman/tparse@latest
+
+  release:
+    desc: Build a release locally with goreleaser. CI runs this as a semantic-release hook; local invocation is for testing.
+    cmds:
+      - goreleaser --clean
+
+  clean:
+    desc: Remove generated artifacts.
+    cmds:
+      - rm -f coverage.out
+      - rm -rf dist/
