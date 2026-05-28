@@ -2,6 +2,7 @@ package nextdns
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -26,6 +27,22 @@ type CreateProfileRequest struct {
 type UpdateProfileRequest struct {
 	ProfileID string
 	Profile   *Profile
+}
+
+// MarshalJSON ensures Profile.ID (populated by Get) does not leak into the
+// PATCH body. The HTTP path already carries the profile id via ProfileID;
+// including it again in the body widens the API contract in a way the v0
+// SDK never produced.
+func (r *UpdateProfileRequest) MarshalJSON() ([]byte, error) {
+	if r.Profile == nil {
+		return []byte("null"), nil
+	}
+	clone := *r.Profile
+	clone.ID = ""
+	// type alias to avoid recursive MarshalJSON (Profile has no custom one,
+	// but the alias trick is the idiomatic guard).
+	type profileAlias Profile
+	return json.Marshal((*profileAlias)(&clone))
 }
 
 // GetProfileRequest encapsulates the request for getting a profile.
@@ -165,7 +182,7 @@ func (s *profilesService) Create(ctx context.Context, request *CreateProfileRequ
 // Update updates the settings of a profile.
 func (s *profilesService) Update(ctx context.Context, request *UpdateProfileRequest) error {
 	path := fmt.Sprintf("%s/%s", profilesAPIPath, request.ProfileID)
-	req, err := s.client.newRequest(http.MethodPatch, path, nil, request.Profile)
+	req, err := s.client.newRequest(http.MethodPatch, path, nil, request)
 	if err != nil {
 		return fmt.Errorf("error creating request to update the profile: %w", err)
 	}

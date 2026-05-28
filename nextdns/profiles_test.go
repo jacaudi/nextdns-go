@@ -2,6 +2,8 @@ package nextdns
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -139,4 +141,32 @@ func TestProfilesGetReturnsID(t *testing.T) {
 	c.NoErr(err)
 	c.Equal(profile.ID, "abc123")
 	c.Equal(profile.Name, "My Profile")
+}
+
+func TestProfilesUpdateOmitsIDFromBody(t *testing.T) {
+	c := is.New(t)
+
+	var bodyKeys map[string]any
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &bodyKeys)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	// Get-mutate-Update pattern: ID is populated from a previous Get.
+	err = client.Profiles.Update(context.Background(), &UpdateProfileRequest{
+		ProfileID: "abc",
+		Profile: &Profile{
+			ID:   "abc", // populated by Get
+			Name: "new",
+		},
+	})
+	c.NoErr(err)
+
+	_, hasID := bodyKeys["id"]
+	c.True(!hasID) // body must NOT contain "id"
 }
