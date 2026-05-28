@@ -336,3 +336,65 @@ func TestLogsDownloadReturnsTypedErrorOn429(t *testing.T) {
 	var apiErr *Error
 	c.True(errors.As(err, &apiErr)) // typed; not a bare fmt.Errorf
 }
+
+func TestLogsStreamAcceptsNoSpaceDataVariant(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		// "data:" with NO space — spec-compliant per HTML5 §9.2.6.
+		_, _ = w.Write([]byte(`data:{"domain":"example.com","status":"default"}`))
+		_, _ = w.Write([]byte("\n\n"))
+		flusher.Flush()
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	var got []*LogEntry
+	for entry, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		if err != nil {
+			break
+		}
+		got = append(got, entry)
+		if len(got) == 1 {
+			break
+		}
+	}
+
+	c.Equal(len(got), 1)
+	c.Equal(got[0].Domain, "example.com")
+}
+
+func TestLogsStreamObserverFiresOn429(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Remaining", "0")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"rate_limited"}]}`))
+	}))
+	defer ts.Close()
+
+	var seen RateLimit
+	client, err := New(
+		WithBaseURL(ts.URL),
+		WithRateLimitObserver(func(rl RateLimit) { seen = rl }),
+	)
+	c.NoErr(err)
+
+	var streamErr error
+	for _, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		streamErr = err
+		break
+	}
+
+	c.Equal(seen.Remaining, 0)
+
+	var apiErr *Error
+	c.True(errors.As(streamErr, &apiErr))
+}

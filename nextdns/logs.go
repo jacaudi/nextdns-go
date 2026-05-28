@@ -323,8 +323,11 @@ func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) it
 		}
 		defer func() { _ = res.Body.Close() }()
 
+		if s.client.rateLimitObserver != nil {
+			s.client.rateLimitObserver(parseRateLimit(res.Header))
+		}
 		if res.StatusCode != http.StatusOK {
-			yield(nil, fmt.Errorf("logs stream: unexpected status %d", res.StatusCode))
+			yield(nil, s.client.parseErrorResponse(res))
 			return
 		}
 
@@ -335,6 +338,8 @@ func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) it
 
 		var dataPayload strings.Builder
 
+		const dataPrefix = "data:"
+
 		for scanner.Scan() {
 			if ctx.Err() != nil {
 				yield(nil, ctx.Err())
@@ -342,11 +347,13 @@ func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) it
 			}
 			line := scanner.Text()
 			switch {
-			case strings.HasPrefix(line, "data: "):
+			case strings.HasPrefix(line, dataPrefix):
+				payload := strings.TrimPrefix(line, dataPrefix)
+				payload = strings.TrimPrefix(payload, " ") // optional space per SSE spec
 				if dataPayload.Len() > 0 {
 					dataPayload.WriteString("\n")
 				}
-				dataPayload.WriteString(strings.TrimPrefix(line, "data: "))
+				dataPayload.WriteString(payload)
 			case line == "":
 				// Event boundary — emit if we have a payload.
 				if dataPayload.Len() == 0 {
