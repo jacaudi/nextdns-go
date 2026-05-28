@@ -133,11 +133,22 @@ type LogsService interface {
 	DownloadURL(ctx context.Context, request *DownloadLogsRequest) (*DownloadLogsURLResponse, error)
 
 	// Stream consumes the /logs/stream SSE endpoint as an iterator.
-	// Iteration ends when ctx is cancelled or the connection drops.
-	// The last yielded pair carries err != nil to signal end of stream.
+	// Iteration ends when ctx is cancelled, the connection drops, or the
+	// server closes the stream cleanly. A clean server-side close yields
+	// (nil, io.EOF) as the final pair; other end states yield a wrapped
+	// non-nil error.
 	//
-	// Caller controls reconnect: track the last event ID and pass it
-	// via StreamLogsRequest.LastID on the next call.
+	// Caller controls reconnect: track the SSE event id (exposed on
+	// LogEntry.ID) and pass it via StreamLogsRequest.LastID on the next
+	// call to resume from the last seen event.
+	//
+	// Event size limit: the SSE parser allocates a 1 MiB per-event buffer.
+	// A single event whose data: payload exceeds this triggers
+	// bufio.ErrTooLong, which is yielded as the terminal error and ends
+	// the stream. The limit is not configurable on LogsService; callers
+	// needing a larger ceiling must fork Stream (e.g. via a custom
+	// *http.Client injected with WithHTTPClient and a private SSE
+	// reader).
 	Stream(ctx context.Context, request *StreamLogsRequest) iter.Seq2[*LogEntry, error]
 }
 

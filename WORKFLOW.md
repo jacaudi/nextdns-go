@@ -98,7 +98,7 @@ import (
 
 func main() {
     client, err := nextdns.New(
-        nextdns.WithAPIKey("your-api-key"),
+        nextdns.WithAPIKey(nextdns.Secret("your-api-key")),
     )
     if err != nil {
         log.Fatal(err)
@@ -109,7 +109,7 @@ func main() {
         log.Fatal(err)
     }
 
-    log.Printf("Found %d profiles", len(profiles))
+    log.Printf("Found %d profiles", len(profiles.Profiles))
 }
 ```
 
