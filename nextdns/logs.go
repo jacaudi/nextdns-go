@@ -32,6 +32,7 @@ type LogReason struct {
 
 // LogEntry represents a single DNS query log entry.
 type LogEntry struct {
+	ID        string      `json:"-"` // SSE event id; populated by Stream only.
 	Timestamp time.Time   `json:"timestamp"`
 	Domain    string      `json:"domain"`
 	Root      string      `json:"root"`
@@ -337,8 +338,12 @@ func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) it
 		scanner.Buffer(buf, 1024*1024)
 
 		var dataPayload strings.Builder
+		// lastID is retained across events per SSE spec: an id: line sets
+		// the "last event ID" until the next id: line resets it.
+		var lastID string
 
 		const dataPrefix = "data:"
+		const idPrefix = "id:"
 
 		for scanner.Scan() {
 			if ctx.Err() != nil {
@@ -354,12 +359,15 @@ func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) it
 					dataPayload.WriteString("\n")
 				}
 				dataPayload.WriteString(payload)
+			case strings.HasPrefix(line, idPrefix):
+				lastID = strings.TrimPrefix(line, idPrefix)
+				lastID = strings.TrimPrefix(lastID, " ") // optional space per SSE spec
 			case line == "":
 				// Event boundary — emit if we have a payload.
 				if dataPayload.Len() == 0 {
 					continue
 				}
-				entry := &LogEntry{}
+				entry := &LogEntry{ID: lastID}
 				if err := json.Unmarshal([]byte(dataPayload.String()), entry); err != nil {
 					if !yield(nil, fmt.Errorf("error decoding stream event: %w", err)) {
 						return
@@ -368,13 +376,17 @@ func (s *logsService) Stream(ctx context.Context, request *StreamLogsRequest) it
 					return
 				}
 				dataPayload.Reset()
+				// lastID is intentionally retained across events.
 			default:
-				// id: lines or comments — currently ignored. (Future: track LastID.)
+				// SSE comments (lines starting with ":") and unknown
+				// fields are ignored per spec.
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
 			yield(nil, fmt.Errorf("logs stream read error: %w", err))
+			return
 		}
+		yield(nil, io.EOF)
 	}
 }

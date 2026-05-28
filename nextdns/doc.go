@@ -50,21 +50,23 @@
 //
 // Logs.Stream consumes /logs/stream as a Go 1.23 range-over-func iterator:
 //
+//	var lastID string
 //	for entry, err := range client.Logs.Stream(ctx, req) {
-//	    if err != nil { break }
+//	    if errors.Is(err, io.EOF) { break }
+//	    if err != nil { /* resume with lastID */ break }
+//	    lastID = entry.ID
 //	    process(entry)
 //	}
 //
-// Known limitations:
-//   - Manual reconnect via StreamLogsRequest.LastID is documented but not
-//     yet wired: the SDK currently ignores the SSE id: lines, so callers
-//     cannot learn the last event ID from a stream. Track external state
-//     (e.g., the timestamp of the last entry) if you need to resume.
-//   - The streaming HTTP client clones the SDK default and zeroes its
-//     Timeout, but shares the Transport. Each concurrent stream consumes
-//     one slot from MaxIdleConnsPerHost (default 10). Applications running
-//     many concurrent streams should pass a custom *http.Client via
-//     WithHTTPClient with a larger MaxConnsPerHost.
+// Each LogEntry carries the SSE event id in entry.ID. Pass that id as
+// StreamLogsRequest.LastID on a subsequent call to resume after a drop.
+// On clean server-initiated EOF, the iterator yields (nil, io.EOF).
+//
+// The streaming HTTP client clones the SDK default and zeroes its
+// Timeout, but shares the Transport. Each concurrent stream consumes
+// one slot from MaxIdleConnsPerHost (default 10). Applications running
+// many concurrent streams should pass a custom *http.Client via
+// WithHTTPClient with a larger MaxConnsPerHost.
 //
 // See examples/ for runnable demos.
 package nextdns

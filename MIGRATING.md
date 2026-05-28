@@ -113,7 +113,7 @@ For long-lived streaming like `Logs.Stream`, the SDK internally clones the clien
 These are additive — no v0 code breaks:
 
 - `Profile.ID` field is now populated on Get.
-- `Logs.Download`, `Logs.DownloadURL`, `Logs.Stream`.
+- `Logs.Download`, `Logs.DownloadURL`, `Logs.Stream` (with `LogEntry.ID` for SSE event tracking and `io.EOF` signalling a clean end of stream).
 - 7 new analytics endpoint families.
 - `Delete` on parental-control services and categories.
 - `WithRateLimitObserver`.

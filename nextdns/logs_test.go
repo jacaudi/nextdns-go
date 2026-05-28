@@ -370,6 +370,67 @@ func TestLogsStreamAcceptsNoSpaceDataVariant(t *testing.T) {
 	c.Equal(got[0].Domain, "example.com")
 }
 
+func TestLogsStreamExposesEventID(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		_, _ = w.Write([]byte("id: evt-001\ndata: {\"domain\":\"a.com\"}\n\n"))
+		flusher.Flush()
+		_, _ = w.Write([]byte("id: evt-002\ndata: {\"domain\":\"b.com\"}\n\n"))
+		flusher.Flush()
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	var got []*LogEntry
+	for entry, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		if err != nil {
+			break
+		}
+		got = append(got, entry)
+		if len(got) == 2 {
+			break
+		}
+	}
+
+	c.Equal(got[0].ID, "evt-001")
+	c.Equal(got[1].ID, "evt-002")
+}
+
+func TestLogsStreamYieldsEOFOnCleanEnd(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		flusher, _ := w.(http.Flusher)
+
+		_, _ = w.Write([]byte("data: {\"domain\":\"x.com\"}\n\n"))
+		flusher.Flush()
+		// Handler returns — server closes the connection cleanly.
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	var lastErr error
+	for _, err := range client.Logs.Stream(context.Background(), &StreamLogsRequest{ProfileID: "abc"}) {
+		if err != nil {
+			lastErr = err
+			break
+		}
+	}
+
+	c.True(errors.Is(lastErr, io.EOF))
+}
+
 func TestLogsStreamObserverFiresOn429(t *testing.T) {
 	c := is.New(t)
 

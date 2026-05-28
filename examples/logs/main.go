@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -82,11 +83,20 @@ func streamLogs(client *nextdns.Client, profileID string) {
 	defer stop()
 
 	fmt.Println("Streaming logs — press Ctrl-C to stop.")
-	for entry, err := range client.Logs.Stream(ctx, &nextdns.StreamLogsRequest{ProfileID: profileID}) {
-		if err != nil {
-			fmt.Printf("stream ended: %v\n", err)
+	var lastID string
+	for entry, err := range client.Logs.Stream(ctx, &nextdns.StreamLogsRequest{
+		ProfileID: profileID,
+		LastID:    lastID,
+	}) {
+		if errors.Is(err, io.EOF) {
+			log.Printf("stream ended cleanly; last seen id=%s", lastID)
 			return
 		}
+		if err != nil {
+			log.Printf("stream error: %v (resume from id=%s)", err, lastID)
+			return
+		}
+		lastID = entry.ID
 		fmt.Printf("%s %s %s %s\n", entry.Timestamp.Format("15:04:05"), entry.Status, entry.Protocol, entry.Domain)
 	}
 }
