@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/matryer/is"
@@ -211,4 +212,41 @@ func TestAuthTransportDoesNotMutateRequest(t *testing.T) {
 	c.NoErr(err)
 	_ = res2.Body.Close()
 	c.Equal(len(req.Header.Values("X-Api-Key")), 0) // still not mutated
+}
+
+func TestRedirectStripsAPIKeyAcrossHosts(t *testing.T) {
+	c := is.New(t)
+
+	// Target server (different host) — must NOT receive X-Api-Key.
+	var targetSawKey atomic.Bool
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Api-Key") != "" {
+			targetSawKey.Store(true)
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("payload"))
+	}))
+	defer target.Close()
+
+	// API server: 302 → target. Different host because httptest assigns
+	// different ports (host == "127.0.0.1:N" differs across servers).
+	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c.Equal(r.Header.Get("X-Api-Key"), "k") // API host sees the key
+		http.Redirect(w, r, target.URL+"/file", http.StatusFound)
+	}))
+	defer apiServer.Close()
+
+	client, err := New(WithBaseURL(apiServer.URL), WithAPIKey(Secret("k")))
+	c.NoErr(err)
+
+	// Issue any request that goes through the default client; redirect
+	// follows automatically. (Don't need Logs.Download for the test —
+	// any GET works because the test isolates the redirect behavior.)
+	req, err := client.newRequest(http.MethodGet, "anything", nil, nil)
+	c.NoErr(err)
+	res, err := client.client.Do(req)
+	c.NoErr(err)
+	_ = res.Body.Close()
+
+	c.True(!targetSawKey.Load()) // target host must not have seen the key
 }

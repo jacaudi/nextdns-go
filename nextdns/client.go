@@ -27,7 +27,8 @@ const (
 // settings per go-standards §15.1.
 func defaultHTTPClient() *http.Client {
 	return &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout:       30 * time.Second,
+		CheckRedirect: stripAuthOnCrossHost,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS13,
@@ -45,6 +46,29 @@ func defaultHTTPClient() *http.Client {
 			ForceAttemptHTTP2:     true,
 		},
 	}
+}
+
+// stripAuthOnCrossHost is the SDK's default CheckRedirect: it preserves the
+// stdlib's default 10-redirect cap and removes X-Api-Key + Authorization from
+// requests whose target host differs from the previous request's host.
+//
+// This prevents the customer's API key from leaking to CDN / object-storage
+// hosts that NextDNS uses for binary download endpoints (logs/download).
+// Go's stdlib only strips Authorization/Cookie/WWW-Authenticate on cross-host
+// redirects, NOT custom X-* headers — without this, X-Api-Key would propagate.
+func stripAuthOnCrossHost(req *http.Request, via []*http.Request) error {
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	if len(via) == 0 {
+		return nil
+	}
+	prev := via[len(via)-1].URL.Host
+	if !strings.EqualFold(req.URL.Host, prev) {
+		req.Header.Del("X-Api-Key")
+		req.Header.Del("Authorization")
+	}
+	return nil
 }
 
 // Client represents a NextDNS client.
@@ -126,6 +150,12 @@ func WithBaseURL(baseURL string) ClientOption {
 }
 
 // WithAPIKey sets the API key to be used for requests.
+//
+// The injected X-Api-Key header is scoped to the host of c.baseURL at request
+// time: authTransport only attaches the key when the outgoing request's host
+// matches c.baseURL.Host. This prevents the key from leaking to CDN /
+// object-storage hosts on cross-host redirects (e.g. Logs.Download → S3).
+// stripAuthOnCrossHost (the default CheckRedirect) provides defense in depth.
 func WithAPIKey(apiKey Secret) ClientOption {
 	return func(c *Client) error {
 		if apiKey.Expose() == "" {
@@ -142,6 +172,9 @@ func WithAPIKey(apiKey Secret) ClientOption {
 		transport := authTransport{
 			rt:     c.client.Transport,
 			apiKey: apiKey,
+			// Lazy host resolution: read c.baseURL at request time so option
+			// ordering (WithBaseURL before/after WithAPIKey) doesn't matter.
+			trustedHostFn: func() string { return c.baseURL.Host },
 		}
 
 		c.client.Transport = &transport
@@ -416,19 +449,32 @@ func (c *Client) newRequest(method string, path string, query url.Values, body i
 	return req, nil
 }
 
-// authTransport adds the NextDNS authentication header to outgoing requests.
+// authTransport adds the NextDNS authentication header to outgoing requests
+// whose host matches the configured trusted host.
 type authTransport struct {
 	rt     http.RoundTripper
 	apiKey Secret
+	// trustedHostFn returns the host that is allowed to receive X-Api-Key.
+	// It is invoked on every RoundTrip so option ordering at New() time does
+	// not matter, and so that custom HTTP clients carrying our authTransport
+	// stay in sync if c.baseURL is later swapped.
+	trustedHostFn func() string
 }
 
 // RoundTrip adds the authorization header to a CLONE of the inbound request,
 // per the http.RoundTripper contract ("RoundTrip should not modify the
 // request"). Uses Set rather than Add so retries through the same transport
 // do not accumulate duplicate X-Api-Key headers.
+//
+// The header is only attached when the request's host matches the trusted
+// host (case-insensitive per RFC 4343). On a cross-host redirect — e.g. the
+// NextDNS logs/download endpoint redirecting to a CDN / S3 host — the key is
+// withheld so it cannot leak to third-party access logs or proxies.
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	clone := req.Clone(req.Context())
-	clone.Header.Set("X-Api-Key", t.apiKey.Expose())
+	if t.trustedHostFn != nil && strings.EqualFold(clone.URL.Host, t.trustedHostFn()) {
+		clone.Header.Set("X-Api-Key", t.apiKey.Expose())
+	}
 	return t.rt.RoundTrip(clone)
 }
 
