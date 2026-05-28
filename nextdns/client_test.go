@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -381,3 +382,32 @@ func TestParseErrorResponse_ContractParity(t *testing.T) {
 		c.True(apiErr.Meta["err"] != "")
 	})
 }
+
+// TestDefaultHTTPClientHonorsProxyEnv asserts that defaultHTTPClient's
+// Transport consults the HTTPS_PROXY/HTTP_PROXY/NO_PROXY environment via
+// http.ProxyFromEnvironment.
+//
+// Implementation note: an earlier form of this test ran a real httptest proxy
+// and set HTTPS_PROXY via t.Setenv. That works in isolation but is flaky
+// under the full suite because http.ProxyFromEnvironment memoizes the
+// resolved proxy config via sync.Once on first invocation — once another
+// test triggers it with an empty env, subsequent t.Setenv calls have no
+// effect on proxy resolution. The transport-introspection form below
+// asserts the wiring directly (Transport.Proxy is set to the stdlib
+// env-aware function), which is a more reliable signal than the
+// end-to-end check.
+func TestDefaultHTTPClientHonorsProxyEnv(t *testing.T) {
+	c := is.New(t)
+
+	client := defaultHTTPClient()
+	tr, ok := client.Transport.(*http.Transport)
+	c.True(ok)
+	c.True(tr.Proxy != nil)
+
+	// Verify it's specifically http.ProxyFromEnvironment (not some other
+	// proxy func), comparing function pointers via reflect.
+	want := reflect.ValueOf(http.ProxyFromEnvironment).Pointer()
+	got := reflect.ValueOf(tr.Proxy).Pointer()
+	c.Equal(got, want)
+}
+

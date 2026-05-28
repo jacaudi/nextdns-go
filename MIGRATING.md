@@ -95,7 +95,8 @@ The default `*http.Client` now has:
 
 - Overall `Timeout: 30s`
 - TLS 1.3 minimum (`MinVersion: tls.VersionTLS13`)
-- Tuned dial / handshake / response-header timeouts (5s, 5s, 10s)
+- Respects `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` env vars (matches v0)
+- Tuned dial / handshake / response-header timeouts (30s, 5s, 10s) — dial timeout matches v0
 - HTTP/2 preferred (`ForceAttemptHTTP2: true`)
 
 If you depended on `cleanhttp.DefaultClient`'s specific behavior (no overall timeout, TLS 1.2 floor), pass your own client via `WithHTTPClient`:

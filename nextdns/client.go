@@ -30,11 +30,12 @@ func defaultHTTPClient() *http.Client {
 		Timeout:       30 * time.Second,
 		CheckRedirect: stripAuthOnCrossHost,
 		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment, // RESTORED: honors HTTPS_PROXY/HTTP_PROXY/NO_PROXY
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS13,
 			},
 			DialContext: (&net.Dialer{
-				Timeout:   5 * time.Second,
+				Timeout:   30 * time.Second, // RESTORED from cleanhttp default
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
 			TLSHandshakeTimeout:   5 * time.Second,
