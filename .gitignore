@@ -26,6 +26,9 @@ dist/
 # Plans documentation
 /docs/plans/**/*
 
+# Review notes
+/docs/review/**/*
+
 # Handoff prompts
 /docs/prompts/**/*
 
