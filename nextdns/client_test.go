@@ -157,14 +157,31 @@ func TestRateLimitObserverUnsetNoOp(t *testing.T) {
 func TestWithHTTPClientNoTransport(t *testing.T) {
 	c := is.New(t)
 
-	// Empty *http.Client (Transport == nil). Before the fix, WithAPIKey
-	// captures nil into authTransport.rt and the first request panics.
-	_, err := New(
-		WithBaseURL("https://api.nextdns.io/"),
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"data":{}}`))
+	}))
+	defer ts.Close()
+
+	// Empty *http.Client (Transport == nil). Without the nil-Transport guard
+	// in WithAPIKey, the authTransport wrapper captures nil into t.rt, and
+	// the first RoundTrip panics with a nil-pointer dereference.
+	client, err := New(
+		WithBaseURL(ts.URL),
 		WithHTTPClient(&http.Client{}),
 		WithAPIKey(Secret("test-key")),
 	)
 	c.NoErr(err)
+
+	req, err := client.newRequest(http.MethodGet, "anything", nil, nil)
+	c.NoErr(err)
+
+	// This RoundTrip is the line that panics pre-fix. It must complete
+	// without panicking and produce a non-nil response.
+	res, err := client.client.Transport.RoundTrip(req)
+	c.NoErr(err)
+	c.True(res != nil)
+	_ = res.Body.Close()
 }
 
 func TestAuthTransportDoesNotMutateRequest(t *testing.T) {
