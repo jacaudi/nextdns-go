@@ -236,6 +236,11 @@ func (s *logsService) Clear(ctx context.Context, request *ClearLogsRequest) erro
 
 // Download fetches the CSV log archive, following the 302 redirect.
 // Caller MUST Close() the returned ReadCloser.
+//
+// The HTTP client is cloned per-call to zero the overall Timeout — CSV
+// archives for high-volume profiles can be tens of MB, easily exceeding
+// the SDK default 30s. The Transport (and X-Api-Key injection / proxy
+// settings / CheckRedirect) is shared with the SDK default.
 func (s *logsService) Download(ctx context.Context, request *DownloadLogsRequest) (io.ReadCloser, error) {
 	path := fmt.Sprintf("%s/download", logsPath(request.ProfileID))
 
@@ -245,14 +250,23 @@ func (s *logsService) Download(ctx context.Context, request *DownloadLogsRequest
 	}
 	req = req.WithContext(ctx)
 
-	res, err := s.client.client.Do(req)
+	downloadClient := *s.client.client
+	downloadClient.Timeout = 0
+
+	res, err := downloadClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request to download logs: %w", err)
 	}
-	if res.StatusCode != http.StatusOK {
-		_ = res.Body.Close()
-		return nil, fmt.Errorf("logs download: unexpected status %d", res.StatusCode)
+
+	if s.client.rateLimitObserver != nil {
+		s.client.rateLimitObserver(parseRateLimit(res.Header))
 	}
+
+	if res.StatusCode >= 400 {
+		defer func() { _ = res.Body.Close() }()
+		return nil, s.client.parseErrorResponse(res)
+	}
+
 	return res.Body, nil
 }
 

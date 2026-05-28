@@ -3,6 +3,7 @@ package nextdns
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -287,4 +288,51 @@ func TestLogsStream(t *testing.T) {
 	c.Equal(len(got), 2)
 	c.Equal(got[0].Domain, "example.com")
 	c.Equal(got[1].Status, StatusBlocked)
+}
+
+func TestLogsDownloadInvokesRateLimitObserver(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("X-RateLimit-Limit", "600")
+		w.Header().Set("X-RateLimit-Remaining", "599")
+		w.Header().Set("X-RateLimit-Reset", "1730000000")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("timestamp,domain\n"))
+	}))
+	defer ts.Close()
+
+	var seen RateLimit
+	client, err := New(
+		WithBaseURL(ts.URL),
+		WithRateLimitObserver(func(rl RateLimit) { seen = rl }),
+	)
+	c.NoErr(err)
+
+	body, err := client.Logs.Download(context.Background(), &DownloadLogsRequest{ProfileID: "abc"})
+	c.NoErr(err)
+	defer func() { _ = body.Close() }()
+	_, _ = io.ReadAll(body)
+
+	c.Equal(seen.Limit, 600)
+	c.Equal(seen.Remaining, 599)
+}
+
+func TestLogsDownloadReturnsTypedErrorOn429(t *testing.T) {
+	c := is.New(t)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"errors":[{"code":"rate_limited"}]}`))
+	}))
+	defer ts.Close()
+
+	client, err := New(WithBaseURL(ts.URL))
+	c.NoErr(err)
+
+	_, err = client.Logs.Download(context.Background(), &DownloadLogsRequest{ProfileID: "abc"})
+	c.True(err != nil)
+
+	var apiErr *Error
+	c.True(errors.As(err, &apiErr)) // typed; not a bare fmt.Errorf
 }
