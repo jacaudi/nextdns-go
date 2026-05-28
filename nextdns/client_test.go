@@ -231,7 +231,11 @@ func TestRedirectStripsAPIKeyAcrossHosts(t *testing.T) {
 	// API server: 302 → target. Different host because httptest assigns
 	// different ports (host == "127.0.0.1:N" differs across servers).
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c.Equal(r.Header.Get("X-Api-Key"), "k") // API host sees the key
+		// Don't use is.Equal here — it calls t.FailNow, which from a non-test
+		// goroutine just goexits the handler goroutine without failing the test.
+		if got := r.Header.Get("X-Api-Key"); got != "k" {
+			t.Errorf("API host: X-Api-Key = %q, want %q", got, "k")
+		}
 		http.Redirect(w, r, target.URL+"/file", http.StatusFound)
 	}))
 	defer apiServer.Close()
@@ -249,4 +253,50 @@ func TestRedirectStripsAPIKeyAcrossHosts(t *testing.T) {
 	_ = res.Body.Close()
 
 	c.True(!targetSawKey.Load()) // target host must not have seen the key
+}
+
+func TestStripAuthOnCrossHost(t *testing.T) {
+	c := is.New(t)
+
+	mkReq := func(host string) *http.Request {
+		req, err := http.NewRequest(http.MethodGet, "https://"+host+"/x", nil)
+		c.NoErr(err)
+		req.Header.Set("X-Api-Key", "secret")
+		req.Header.Set("Authorization", "Bearer x")
+		return req
+	}
+
+	// First hop: via is empty, headers preserved.
+	first := mkReq("api.nextdns.io")
+	err := stripAuthOnCrossHost(first, nil)
+	c.NoErr(err)
+	c.Equal(first.Header.Get("X-Api-Key"), "secret")
+	c.Equal(first.Header.Get("Authorization"), "Bearer x")
+
+	// Same-host redirect: headers preserved.
+	same := mkReq("api.nextdns.io")
+	err = stripAuthOnCrossHost(same, []*http.Request{mkReq("api.nextdns.io")})
+	c.NoErr(err)
+	c.Equal(same.Header.Get("X-Api-Key"), "secret")
+
+	// Case-insensitive same-host: still preserved (RFC 4343).
+	caseDiff := mkReq("API.NextDNS.io")
+	err = stripAuthOnCrossHost(caseDiff, []*http.Request{mkReq("api.nextdns.io")})
+	c.NoErr(err)
+	c.Equal(caseDiff.Header.Get("X-Api-Key"), "secret")
+
+	// Cross-host redirect: both headers stripped.
+	cross := mkReq("cdn.example.com")
+	err = stripAuthOnCrossHost(cross, []*http.Request{mkReq("api.nextdns.io")})
+	c.NoErr(err)
+	c.Equal(cross.Header.Get("X-Api-Key"), "")
+	c.Equal(cross.Header.Get("Authorization"), "")
+
+	// 10-redirect cap honored.
+	via := make([]*http.Request, 10)
+	for i := range via {
+		via[i] = mkReq("api.nextdns.io")
+	}
+	err = stripAuthOnCrossHost(mkReq("api.nextdns.io"), via)
+	c.True(err != nil)
 }

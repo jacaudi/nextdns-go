@@ -156,6 +156,11 @@ func WithBaseURL(baseURL string) ClientOption {
 // matches c.baseURL.Host. This prevents the key from leaking to CDN /
 // object-storage hosts on cross-host redirects (e.g. Logs.Download → S3).
 // stripAuthOnCrossHost (the default CheckRedirect) provides defense in depth.
+//
+// Option ordering: WithBaseURL may be applied before or after WithAPIKey; the
+// host check is evaluated lazily at request time. WithHTTPClient, however,
+// must be applied before WithAPIKey — it replaces c.client wholesale and
+// would discard the auth wrapper otherwise.
 func WithAPIKey(apiKey Secret) ClientOption {
 	return func(c *Client) error {
 		if apiKey.Expose() == "" {
@@ -455,9 +460,8 @@ type authTransport struct {
 	rt     http.RoundTripper
 	apiKey Secret
 	// trustedHostFn returns the host that is allowed to receive X-Api-Key.
-	// It is invoked on every RoundTrip so option ordering at New() time does
-	// not matter, and so that custom HTTP clients carrying our authTransport
-	// stay in sync if c.baseURL is later swapped.
+	// It is invoked at request time so option ordering between WithBaseURL
+	// and WithAPIKey at construction does not matter.
 	trustedHostFn func() string
 }
 
@@ -469,11 +473,15 @@ type authTransport struct {
 // The header is only attached when the request's host matches the trusted
 // host (case-insensitive per RFC 4343). On a cross-host redirect — e.g. the
 // NextDNS logs/download endpoint redirecting to a CDN / S3 host — the key is
-// withheld so it cannot leak to third-party access logs or proxies.
+// withheld so it cannot leak to third-party access logs or proxies. An empty
+// trusted host is treated as no-trust (the key is withheld) so the check
+// fails secure even though net/http rejects empty-Host requests in practice.
 func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	clone := req.Clone(req.Context())
-	if t.trustedHostFn != nil && strings.EqualFold(clone.URL.Host, t.trustedHostFn()) {
-		clone.Header.Set("X-Api-Key", t.apiKey.Expose())
+	if t.trustedHostFn != nil {
+		if trusted := t.trustedHostFn(); trusted != "" && strings.EqualFold(clone.URL.Host, trusted) {
+			clone.Header.Set("X-Api-Key", t.apiKey.Expose())
+		}
 	}
 	return t.rt.RoundTrip(clone)
 }
