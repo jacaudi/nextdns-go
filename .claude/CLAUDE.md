@@ -6,8 +6,10 @@ This is the public Go SDK for the NextDNS API.
 
 - `nextdns/` — the single domain package. SDK code, types, services.
 - `examples/` — one runnable example per major feature, each with its own `go.mod`.
+- `docs/` — published documentation (`migrating.md`, `workflow.md`).
 - `docs/plans/` — design and implementation plans (gitignored).
 - `docs/review/` — review notes (gitignored).
+- `docs/prompts/` — session handoff artifacts (gitignored).
 
 ## Build / test
 

@@ -2,6 +2,14 @@
 
 Go client library for the [NextDNS](https://nextdns.io/) API.
 
+## Contents
+
+- [Install](#install) · [Requirements](#requirements) · [Quick Start](#quick-start)
+- [API Coverage](#api-coverage)
+- [Examples](#examples)
+- [Documentation](#documentation)
+- [License](#license)
+
 ## Install
 
 ```bash
@@ -71,13 +79,12 @@ Each feature has a runnable example in [`examples/`](./examples/):
 - [`examples/analytics/`](./examples/analytics/) — query analytics and time series
 - [`examples/logs/`](./examples/logs/) — query, download, and stream DNS logs
 
-## Migration from v0.x
+## Documentation
 
-See [`MIGRATING.md`](./MIGRATING.md) for the v0.x → v1.0.0 migration guide.
-
-## Workflow & Release Process
-
-See [`WORKFLOW.md`](./WORKFLOW.md).
+- API reference on [pkg.go.dev](https://pkg.go.dev/github.com/jacaudi/nextdns-go/nextdns) — package godoc covering authentication, HTTP defaults, errors, rate limiting, streaming, and per-service interfaces.
+- [`docs/migrating.md`](./docs/migrating.md) — v0.x → v1.0.0 migration guide.
+- [`docs/workflow.md`](./docs/workflow.md) — release workflow, Conventional Commits, downstream consumption, troubleshooting.
+- [`docs/`](./docs/) — full index of project documentation.
 
 ## License
 
