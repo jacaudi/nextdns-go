@@ -74,6 +74,9 @@ jobs:
       use-github-app: true
       go: true
       goreleaser: true
+      # The conventionalcommits preset used in .releaserc.json requires
+      # this package — semantic-release ships only the angular default.
+      extra-plugins: 'conventional-changelog-conventionalcommits'
     secrets:
       app-id: ${{ secrets.APP_ID }}
       app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
