@@ -1,5 +1,9 @@
-# Go SDK Release: Lint, Test, Semantic Release + GoReleaser
-# Based on jacaudi/github-actions v0.2.0
+# Go SDK Release: Lint, Test, Semantic Release
+#
+# This workflow orchestrates the SDK release pipeline using sibling reusable
+# workflows (lint.yml, test.yml, semantic-release.yml) under .github/workflows/.
+# All three were forked from jacaudi/github-actions@v0.20.3 so the SDK no
+# longer depends on an external workflow repo — adjust them in place if needed.
 name: Release
 
 on:
@@ -16,17 +20,15 @@ jobs:
   lint:
     # Skip on tag pushes - code should have been tested already
     if: "!startsWith(github.ref, 'refs/tags/v')"
-    uses: jacaudi/github-actions/.github/workflows/lint.yml@v0.14.1
+    uses: ./.github/workflows/lint.yml
     with:
-      go: true
       go-version: 'stable'
 
   test:
     # Skip on tag pushes - code should have been tested already
     if: "!startsWith(github.ref, 'refs/tags/v')"
-    uses: jacaudi/github-actions/.github/workflows/test.yml@v0.14.1
+    uses: ./.github/workflows/test.yml
     with:
-      test-framework: go
       coverage: true
       go-version: 'stable'
 
@@ -36,8 +38,8 @@ jobs:
     if: "!startsWith(github.ref, 'refs/tags/v')"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: 'stable'
           cache: true
@@ -48,19 +50,30 @@ jobs:
             (cd "$dir" && go build ./...)
           done
 
-  # Automatic semantic versioning from Conventional Commits + GoReleaser build
-  # Creates version tags and releases automatically based on commit messages:
-  # - feat: ... → minor version bump (v1.1.0)
-  # - fix: ... → patch version bump (v1.0.1)
-  # - feat!: ... → major version bump (v2.0.0) [native breaking change support]
-  # GoReleaser runs as a hook after semantic-release creates the tag
+  # Automatic semantic versioning from Conventional Commits.
+  # Creates version tags and GitHub Releases based on commit messages:
+  # - feat: ... → minor bump
+  # - fix: ... → patch bump
+  # - feat!: ... or BREAKING CHANGE: → major bump
+  # - chore:/docs:/test: → no version bump
+  #
+  # `go: true` / `goreleaser: true` install the toolchains in the runner so
+  # a .releaserc.json that wires goreleaser via @semantic-release/exec can
+  # use them. With no .releaserc.json in the repo, semantic-release falls
+  # back to its defaults (no CHANGELOG.md commit, no goreleaser invocation),
+  # matching today's observed behavior.
   release:
     needs: [lint, test, examples]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: jacaudi/github-actions/.github/workflows/semantic-release.yml@v0.14.1
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/semantic-release.yml
     with:
       use-github-app: true
-      hooks: goreleaser
+      go: true
+      goreleaser: true
     secrets:
       app-id: ${{ secrets.APP_ID }}
       app-private-key: ${{ secrets.APP_PRIVATE_KEY }}

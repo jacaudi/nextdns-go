@@ -1,0 +1,49 @@
+# Reusable Go lint workflow.
+# Inlined from jacaudi/github-actions component-lint.yml@v0.20.3 and slimmed
+# to the Go path nextdns-go actually uses. Restore Python/Shell/YAML/Helm
+# branches from upstream if you ever need them.
+name: Lint
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        required: false
+        type: string
+        default: 'stable'
+      golangci-lint-version:
+        description: 'golangci-lint version to install'
+        required: false
+        type: string
+        default: 'latest'
+      golangci-lint-args:
+        description: 'Additional arguments to pass to golangci-lint'
+        required: false
+        type: string
+        default: ''
+      working-directory:
+        description: 'Working directory for golangci-lint'
+        required: false
+        type: string
+        default: '.'
+
+jobs:
+  lint:
+    name: Lint (go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ inputs.golangci-lint-version }}
+          args: ${{ inputs.golangci-lint-args }}
+          working-directory: ${{ inputs.working-directory }}
